@@ -23,7 +23,7 @@ const SACRIFICE = 2;
 /** After the opponent's mistake, losing this much of the chance you were given is a miss. */
 const MISS_AFTER_OPPONENT = INACCURACY;
 
-const VALUE: Record<PieceSymbol, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+export const VALUE: Record<PieceSymbol, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 
 export interface Score {
   /** White's win chance, 0-100. */
@@ -39,6 +39,8 @@ export interface MoveReview {
   loss: number;
   best?: string;
   bestLine?: string[];
+  /** For a brilliant move: the piece it left en prise. */
+  sacrificed?: PieceSymbol;
 }
 
 export const winChance = (cp: number) => 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * clamp(cp, -1000, 1000))) - 1);
@@ -46,7 +48,7 @@ export const winChance = (cp: number) => 50 + 50 * (2 / (1 + Math.exp(-0.0036820
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
 /** Win chance of a line for the side to move. */
-const lineWin = (line: Line) => (line.mate !== undefined ? (line.mate > 0 ? 100 : 0) : winChance(line.cp ?? 0));
+export const lineWin = (line: Line) => (line.mate !== undefined ? (line.mate > 0 ? 100 : 0) : winChance(line.cp ?? 0));
 
 export function scorePosition(game: Game, index: number, ev: PositionEval | undefined): Score | undefined {
   const fen = game.fens[index];
@@ -66,16 +68,18 @@ export function scorePosition(game: Game, index: number, ev: PositionEval | unde
   return { whiteWin: winChance(cp), whiteCp: clamp(cp, -1000, 1000), label: `${cp > 0 ? '+' : ''}${(cp / 100).toFixed(1)}` };
 }
 
-/** True when the move leaves at least a minor piece's worth of material en prise, net of what it took. */
-function isSacrifice(ply: Ply): boolean {
+/** The piece a move leaves en prise when that is worth at least a minor piece net of what it took. */
+function sacrificedPiece(ply: Ply): PieceSymbol | undefined {
   const chess = new Chess(ply.fenAfter);
   let atStake = 0;
+  let piece: PieceSymbol | undefined;
   for (const reply of chess.moves({ verbose: true })) {
     if (!reply.captured || reply.captured === 'p') continue;
     const defended = chess.attackers(reply.to, ply.color).length > 0;
-    atStake = Math.max(atStake, VALUE[reply.captured] - (defended ? VALUE[reply.piece] : 0));
+    const net = VALUE[reply.captured] - (defended ? VALUE[reply.piece] : 0);
+    if (net > atStake) [atStake, piece] = [net, reply.captured];
   }
-  return atStake - (ply.captured ? VALUE[ply.captured] : 0) >= SACRIFICE;
+  return atStake - (ply.captured ? VALUE[ply.captured] : 0) >= SACRIFICE ? piece : undefined;
 }
 
 const isRecapture = (ply: Ply, prev: Ply | undefined) => !!prev?.captured && !!ply.captured && prev.to === ply.to;
@@ -109,7 +113,9 @@ export function reviewGame(
 
     let grade: Grade;
     const forcesMate = winAfter === 100; // only a mate score reaches 100
-    if ((isBest || loss <= EXCELLENT) && (winBefore < DECIDED || forcesMate) && winAfter >= STILL_FINE && isSacrifice(ply)) grade = 'brilliant';
+    const sacrificed =
+      (isBest || loss <= EXCELLENT) && (winBefore < DECIDED || forcesMate) && winAfter >= STILL_FINE ? sacrificedPiece(ply) : undefined;
+    if (sacrificed) grade = 'brilliant';
     else if (isBest && gap >= GREAT_GAP && winBefore < DECIDED && !isRecapture(ply, game.plies[i - 1])) grade = 'great';
     else if (isBest) grade = 'best';
     else if (loss <= EXCELLENT) grade = 'excellent';
@@ -121,7 +127,7 @@ export function reviewGame(
     const opponentErred = prev?.grade === 'mistake' || prev?.grade === 'blunder';
     if (!isBest && opponentErred && loss >= MISS_AFTER_OPPONENT && winAfter >= 30) grade = 'miss';
 
-    const review: MoveReview = { grade, loss };
+    const review: MoveReview = { grade, loss, sacrificed };
     if (!isBest) {
       review.bestLine = lineToSan(ply.fenBefore, lines[0].pv);
       review.best = review.bestLine[0];
@@ -133,7 +139,7 @@ export function reviewGame(
 }
 
 /** lichess's per-move accuracy from win chances before and after the move. */
-function moveAccuracy(before: number, after: number): number {
+export function moveAccuracy(before: number, after: number): number {
   if (after >= before) return 100;
   const raw = 103.1668100711649 * Math.exp(-0.04354415386753951 * (before - after)) - 3.166924740191411;
   return clamp(raw + 1, 0, 100);
@@ -170,4 +176,73 @@ export function gameAccuracy(scores: Score[], whiteMovesFirst: boolean): { w: nu
     return (weighted + harmonic) / 2;
   };
   return { w: side(per.w), b: side(per.b) };
+}
+
+export type Phase = 'opening' | 'middlegame' | 'endgame';
+export const PHASES: Phase[] = ['opening', 'middlegame', 'endgame'];
+
+/**
+ * Where the middlegame and endgame start, as position indices. A simplified version of lichess's
+ * Divider: the middlegame starts once ten or fewer minor and major pieces remain or a back rank
+ * thins out (pieces developed); the endgame once six or fewer remain.
+ */
+export function phaseStarts(game: Game): { middlegame: number; endgame: number } {
+  let middlegame = Infinity;
+  let endgame = Infinity;
+  game.fens.forEach((fen, i) => {
+    const board = new Chess(fen).board();
+    const pieces = board.flat().filter((sq) => sq && sq.type !== 'p' && sq.type !== 'k').length;
+    const backRank = (row: number, color: 'w' | 'b') => board[row].filter((sq) => sq?.color === color).length;
+    if (middlegame === Infinity && (pieces <= 10 || backRank(7, 'w') < 4 || backRank(0, 'b') < 4)) middlegame = i;
+    if (endgame === Infinity && pieces <= 6) endgame = i;
+  });
+  return { middlegame: Math.min(middlegame, endgame), endgame };
+}
+
+export const phaseOf = (ply: number, starts: { middlegame: number; endgame: number }): Phase =>
+  ply >= starts.endgame ? 'endgame' : ply >= starts.middlegame ? 'middlegame' : 'opening';
+
+export interface PlayerStats {
+  /** Grade summarising each phase, or null when the player made no moves in it. */
+  phases: Record<Phase, Grade | null>;
+}
+
+/** Phase grade from the player's mean move accuracy in that phase. */
+function phaseGrade(accuracies: number[], grades: Grade[]): Grade | null {
+  if (!grades.length) return null;
+  if (grades.every((g) => g === 'book' || g === 'forced')) return 'book';
+  const mean = accuracies.reduce((a, b) => a + b, 0) / accuracies.length;
+  return mean >= 95 ? 'best' : mean >= 85 ? 'excellent' : mean >= 75 ? 'good' : mean >= 60 ? 'inaccuracy' : mean >= 45 ? 'mistake' : 'blunder';
+}
+
+/**
+ * Per-player phase grades. (No "game rating": a one-game estimate from a lite engine put a
+ * 3450 blitz player at 1950, which is worse than showing nothing.)
+ */
+export function playerStats(game: Game, scores: Score[], moves: (MoveReview | undefined)[]): Record<'w' | 'b', PlayerStats> {
+  const starts = phaseStarts(game);
+  const out = {} as Record<'w' | 'b', PlayerStats>;
+  for (const color of ['w', 'b'] as const) {
+    const byPhase: Record<Phase, { acc: number[]; grades: Grade[] }> = {
+      opening: { acc: [], grades: [] },
+      middlegame: { acc: [], grades: [] },
+      endgame: { acc: [], grades: [] },
+    };
+    game.plies.forEach((ply, i) => {
+      const m = moves[i];
+      if (ply.color !== color || !m) return;
+      const mine = (s: Score) => (color === 'w' ? s.whiteWin : 100 - s.whiteWin);
+      const bucket = byPhase[phaseOf(i, starts)];
+      bucket.grades.push(m.grade);
+      if (m.grade !== 'book' && m.grade !== 'forced') bucket.acc.push(moveAccuracy(mine(scores[i]), mine(scores[i + 1])));
+    });
+    out[color] = {
+      phases: {
+        opening: phaseGrade(byPhase.opening.acc, byPhase.opening.grades),
+        middlegame: phaseGrade(byPhase.middlegame.acc, byPhase.middlegame.grades),
+        endgame: phaseGrade(byPhase.endgame.acc, byPhase.endgame.grades),
+      },
+    };
+  }
+  return out;
 }

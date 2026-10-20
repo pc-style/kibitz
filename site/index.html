@@ -8,8 +8,9 @@
     <title>Kibitz · free chess game review</title>
     <script>
       try {
+        const saved = localStorage.getItem('kibitz:theme');
         document.documentElement.dataset.theme =
-          localStorage.getItem('kibitz:theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'felt');
+          saved && saved !== 'felt' ? saved : matchMedia('(prefers-color-scheme: light)').matches && !saved ? 'paper' : 'classic';
       } catch {}
     </script>
   </head>

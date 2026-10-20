@@ -22,47 +22,50 @@
   --dur-slow: 320ms;
 }
 
+/* Classic (default): the club look chess.com players know — green and cream board, warm grays, green action. */
 :root,
-[data-theme='felt'] {
-  --bg: oklch(0.17 0.012 165);
-  --surface: oklch(0.205 0.014 165);
-  --surface-2: oklch(0.25 0.016 165);
-  --surface-hover: oklch(0.29 0.018 165);
-  --row-alt: oklch(0.22 0.014 165);
-  --border: oklch(0.32 0.016 165);
-  --border-strong: oklch(0.4 0.02 165);
-  --fg: oklch(0.94 0.008 110);
-  --muted: oklch(0.73 0.02 150);
-  --accent: oklch(0.84 0.15 88);
-  --accent-hover: oklch(0.89 0.13 88);
-  --accent-fg: oklch(0.22 0.03 88);
-  --accent-tint: oklch(0.84 0.15 88 / 0.16);
+[data-theme='classic'] {
+  --board-shadow: 0 10px 28px oklch(0 0 0 / 0.38);
+  --bg: oklch(0.305 0.006 75);
+  --surface: oklch(0.255 0.005 80);
+  --surface-2: oklch(0.345 0.006 75);
+  --surface-hover: oklch(0.39 0.007 75);
+  --row-alt: oklch(0.28 0.005 80);
+  --border: oklch(0.37 0.006 75);
+  --border-strong: oklch(0.46 0.008 75);
+  --fg: oklch(0.96 0.003 90);
+  --muted: oklch(0.76 0.008 85);
+  --accent: oklch(0.73 0.15 132);
+  --accent-hover: oklch(0.78 0.14 132);
+  --accent-fg: oklch(0.21 0.04 132);
+  --accent-tint: oklch(0.73 0.15 132 / 0.2);
   --error: oklch(0.72 0.16 25);
-  --sq-light: oklch(0.83 0.035 125);
-  --sq-dark: oklch(0.57 0.055 150);
-  --last-move: oklch(0.86 0.13 95 / 0.42);
-  --board-edge: oklch(0.15 0.012 165);
-  --night: oklch(0.12 0.01 165);
-  --day: oklch(0.92 0.01 110);
-  --g-ink: oklch(0.17 0.012 165);
+  --sq-light: oklch(0.93 0.045 112);
+  --sq-dark: oklch(0.61 0.085 132);
+  --last-move: oklch(0.9 0.15 105 / 0.5);
+  --board-edge: oklch(0.22 0.005 80);
+  --night: oklch(0.22 0.005 80);
+  --day: oklch(0.97 0.003 90);
+  --g-ink: oklch(1 0 0);
 
-  --g-brilliant: oklch(0.78 0.12 192);
-  --g-great: oklch(0.68 0.13 248);
-  --g-best: oklch(0.76 0.15 145);
-  --g-excellent: oklch(0.74 0.11 150);
-  --g-good: oklch(0.7 0.06 150);
-  --g-book: oklch(0.7 0.07 65);
-  --g-inaccuracy: oklch(0.86 0.14 98);
-  --g-mistake: oklch(0.77 0.15 60);
-  --g-miss: oklch(0.7 0.16 20);
-  --g-blunder: oklch(0.64 0.2 25);
-  --g-forced: oklch(0.68 0.02 150);
+  --g-brilliant: oklch(0.67 0.11 190);
+  --g-great: oklch(0.61 0.08 245);
+  --g-best: oklch(0.73 0.15 130);
+  --g-excellent: oklch(0.73 0.15 130);
+  --g-good: oklch(0.7 0.06 140);
+  --g-book: oklch(0.64 0.06 65);
+  --g-inaccuracy: oklch(0.79 0.14 82);
+  --g-mistake: oklch(0.71 0.15 60);
+  --g-miss: oklch(0.67 0.15 30);
+  --g-blunder: oklch(0.56 0.19 27);
+  --g-forced: oklch(0.62 0.01 80);
 
   color-scheme: dark;
 }
 
 /* Warm wood: walnut and maple board, copper accent. */
 [data-theme='walnut'] {
+  --board-shadow: 0 10px 28px oklch(0 0 0 / 0.38);
   --bg: oklch(0.18 0.014 50);
   --surface: oklch(0.215 0.016 50);
   --surface-2: oklch(0.26 0.02 50);
@@ -88,6 +91,7 @@
 
 /* Blue slate with a cyan accent, for late-night blitz sessions. */
 [data-theme='midnight'] {
+  --board-shadow: 0 10px 28px oklch(0 0 0 / 0.38);
   --bg: oklch(0.165 0.022 258);
   --surface: oklch(0.2 0.026 258);
   --surface-2: oklch(0.245 0.03 258);
@@ -113,6 +117,7 @@
 
 /* Printed-diagram daylight theme. Grade colors darken so they stay readable as text on white. */
 [data-theme='paper'] {
+  --board-shadow: 0 8px 24px oklch(0.3 0.02 260 / 0.18);
   --bg: oklch(0.97 0.004 250);
   --surface: oklch(0.995 0.002 250);
   --surface-2: oklch(0.94 0.006 250);
@@ -407,14 +412,14 @@ button {
 
 .home {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
     'top top'
-    'head user'
-    'head pgn'
+    'head preview'
+    'user pgn'
     'foot foot';
   align-items: start;
-  gap: calc(var(--space) * 6) calc(var(--space) * 14);
+  gap: calc(var(--space) * 8) calc(var(--space) * 10);
   max-width: 1180px;
   margin: 0 auto;
   padding: calc(var(--space) * 10) calc(var(--space) * 8) calc(var(--space) * 14);
@@ -430,12 +435,14 @@ button {
 
 .home-head {
   grid-area: head;
-  position: sticky;
-  top: calc(var(--space) * 10);
+  align-self: center;
   display: grid;
   justify-items: start;
-  gap: calc(var(--space) * 5);
-  padding-top: calc(var(--space) * 2);
+  gap: calc(var(--space) * 6);
+}
+
+.home-head h1 span {
+  display: block;
 }
 
 .home-head h1 {
@@ -451,26 +458,72 @@ button {
   line-height: 1.5;
 }
 
-.demo-link {
+/* Every grade, as the review will show it: a legend that doubles as the page's color. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2.5) calc(var(--space) * 4);
+  max-width: 34rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+.legend .gi-solid {
+  width: 22px;
+  height: 22px;
+  padding: 1px;
+}
+
+/* The hero visual is a real review moment, and the whole card opens that review. */
+.preview {
+  grid-area: preview;
+  display: grid;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 4);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-decoration: none;
+  transition: background-color var(--dur) var(--ease-out);
+}
+
+.preview:hover {
+  background: var(--surface-2);
+}
+
+.preview-board {
+  aspect-ratio: 1;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  box-shadow: var(--board-shadow);
+  pointer-events: none;
+}
+
+.preview .preview-coach {
+  min-height: 0;
+}
+
+.preview-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+.preview-open {
   color: var(--accent);
-  font-weight: 500;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  text-underline-offset: 4px;
-  transition: text-decoration-color var(--dur) var(--ease-out);
-}
-
-.demo-link span {
-  display: inline-block;
-  transition: transform var(--dur) var(--ease-out);
-}
-
-.demo-link:hover {
-  text-decoration-color: currentColor;
-}
-
-.demo-link:hover span {
-  transform: translateX(3px);
+  font-weight: 600;
 }
 
 .home-card {
@@ -607,7 +660,7 @@ button {
 /* Review */
 
 .review {
-  --board: min(calc(100svh - 268px), calc(100vw - 526px));
+  --board: min(calc(100svh - 292px), calc(100vw - 526px));
   display: grid;
   grid-template-columns: auto minmax(320px, 400px);
   grid-template-rows: auto 1fr;
@@ -662,6 +715,41 @@ button {
 .board {
   width: var(--board);
   height: var(--board);
+  border-radius: var(--r-sm);
+  box-shadow: var(--board-shadow);
+}
+
+/* Piece icons reuse the board's piece set: a .cg-wrap holding one static <piece>. */
+.cg-wrap.piece-icon {
+  display: inline-block;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.cg-wrap.piece-icon piece {
+  position: static;
+  display: block;
+  width: 100%;
+  height: 100%;
+  will-change: auto;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  text-decoration: none;
+}
+
+.logo-mark.piece-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
 }
 
 .cg-wrap {
@@ -706,10 +794,11 @@ button {
   padding-right: 3px;
 }
 
-.cg-wrap.orientation-white coords.ranks coord:nth-child(even),
-.cg-wrap.orientation-white coords.files coord:nth-child(even),
-.cg-wrap.orientation-black coords.ranks coord:nth-child(odd),
-.cg-wrap.orientation-black coords.files coord:nth-child(odd) {
+/* chessground marks the coordinate rows (not the wrap) with .black when the board is flipped. */
+.cg-wrap coords.ranks:not(.black) coord:nth-child(even),
+.cg-wrap coords.files:not(.black) coord:nth-child(even),
+.cg-wrap coords.ranks.black coord:nth-child(odd),
+.cg-wrap coords.files.black coord:nth-child(odd) {
   color: var(--sq-dark);
 }
 
@@ -727,14 +816,14 @@ button {
 /* While stepping quickly (held arrow keys), every position shows instantly; see go() in review.tsx. */
 .review[data-rapid] .kb-badge,
 .review[data-rapid] .cg-shapes line,
-.review[data-rapid] .comment-body,
-.review[data-rapid] .comment-lead .gi-solid {
+.review[data-rapid] .coach-body,
+.review[data-rapid] .coach-lead .gi-solid {
   animation: none;
 }
 
 .review[data-rapid] .evalbar-white,
 .review[data-rapid] .graph-cursor,
-.review[data-rapid] .comment,
+.review[data-rapid] .coach,
 .review[data-rapid] .move {
   transition: none;
 }
@@ -803,10 +892,25 @@ button {
 
 .player {
   display: flex;
-  align-items: baseline;
-  gap: calc(var(--space) * 2);
+  align-items: center;
+  gap: calc(var(--space) * 2.5);
   padding-left: 28px;
-  min-height: 24px;
+  min-height: 34px;
+}
+
+/* Each player is their pawn on the opposite square color. */
+.player-avatar.piece-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+}
+
+.player-w .player-avatar {
+  background: var(--sq-dark);
+}
+
+.player-b .player-avatar {
+  background: var(--sq-light);
 }
 
 .player-swatch {
@@ -830,14 +934,19 @@ button {
 }
 
 .player-elo {
+  padding: 3px 6px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
   color: var(--muted);
-  font-size: var(--t-sm);
+  font: 500 var(--t-xs) / 1 var(--font-mono);
 }
 
-.player-accuracy {
+.player-accuracy.acc-chip {
+  min-width: 3.8rem;
   margin-left: auto;
-  font: 600 var(--t-sm) / 1 var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  padding: 5px 6px;
+  font-size: var(--t-sm);
+  text-align: center;
 }
 
 /* The signature: White's winning chances as an ink area, with notable moves marked where they happened. */
@@ -927,6 +1036,12 @@ button {
     border-color var(--dur-fast) var(--ease-out);
 }
 
+.turning-point .gi-solid {
+  width: 18px;
+  height: 18px;
+  padding: 1px;
+}
+
 .turning-point:hover {
   background: var(--surface-2);
   border-color: var(--border-strong);
@@ -977,107 +1092,131 @@ button {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space) * 3);
-  height: calc(var(--board) + 152px);
-  min-height: 540px;
-}
-
-.summary {
-  display: grid;
-  gap: calc(var(--space) * 3);
-  padding: calc(var(--space) * 4);
-  border: 1px solid var(--border);
+  height: calc(var(--board) + 170px);
+  min-height: 560px;
+  padding: calc(var(--space) * 3);
   border-radius: var(--r-md);
   background: var(--surface);
 }
 
-.summary-label {
+.report {
+  display: grid;
+  align-content: start;
+  gap: calc(var(--space) * 3);
+  padding: var(--space);
+  overflow-y: auto;
+  animation: kb-enter var(--dur) var(--ease-out) both;
+}
+
+.report-title,
+.panel-title {
+  font: 700 var(--t-md) / 1.2 var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+.report-coach {
+  font-size: var(--t-base);
+  line-height: 1.45;
+}
+
+.report-label {
   color: var(--muted);
   font-size: var(--t-xs);
 }
 
-.summary-accuracy {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: end;
-  gap: calc(var(--space) * 3);
-  min-height: 52px;
-  animation: kb-enter var(--dur-slow) var(--ease-out) both;
-}
-
-.summary-accuracy-title {
-  align-self: center;
-  font: 600 var(--t-xs) / 1 var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.accuracy {
-  display: grid;
-  gap: var(--space);
-  min-width: 0;
-}
-
-.accuracy .summary-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.accuracy-end {
-  text-align: right;
-}
-
-.accuracy strong {
-  font: 600 var(--t-lg) / 1 var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
-}
-
-.summary-progress {
+.report-progress {
   display: grid;
   gap: calc(var(--space) * 1.5);
-  min-height: 52px;
 }
 
-.summary-progress strong {
+.report-progress strong {
   font: 600 var(--t-md) / 1 var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-.summary-total {
+.report-total {
   color: var(--muted);
   font: 400 var(--t-xs) / 1 var(--font-sans);
 }
 
-.grades {
+/* One grid for the whole report: label, White, icon, Black, like chess.com's summary. */
+.report-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: var(--t-sm);
 }
 
-.grades td:first-child {
-  text-align: left;
+.report-table th,
+.report-table td {
+  padding: 0;
+  height: 28px;
+  text-align: center;
 }
 
-.grades td:last-child {
-  text-align: right;
-}
-
-.grades tbody th {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 2);
+.report-table th[scope='row'] {
+  width: 7.2rem;
   font-weight: 500;
   text-align: left;
   white-space: nowrap;
 }
 
-.grades td {
-  width: 3.2rem;
+.report-table thead td:first-child {
+  width: 7.2rem;
 }
 
-.grades td button {
-  min-width: 34px;
+.report-table thead td:nth-child(3),
+.report-table tbody td:nth-child(3) {
+  width: 30px;
+}
+
+/* Sections of the report are separated by a rule and a little air. */
+.report-table tbody + tbody tr:first-child > * {
+  height: 36px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.report-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-name .player-swatch {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+.acc-chip {
+  display: inline-block;
+  min-width: 4.4rem;
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  font: 700 var(--t-md) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.acc-chip-w {
+  background: var(--day);
+  color: var(--night);
+}
+
+.acc-chip-b {
+  background: var(--night);
+  color: var(--day);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.report-accuracy > * {
+  height: 48px;
+}
+
+.report-table td button {
+  min-width: 36px;
   min-height: 24px;
   padding: 0 calc(var(--space) * 2);
   overflow: hidden;
@@ -1090,91 +1229,176 @@ button {
   transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-.grades td button:hover:not(:disabled) {
+.report-table td button:hover:not(:disabled) {
   background: var(--surface-2);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.grades td button:disabled {
+.report-table td button:disabled {
   cursor: default;
   color: var(--muted);
   opacity: 0.5;
 }
 
 /* A count that just changed rolls up into place. */
-.grades .count {
+.report-table .count {
   display: inline-block;
   animation: kb-tick 220ms var(--ease-out) both;
 }
 
-.grades-empty th {
-  color: var(--muted);
-  opacity: 0.7;
+.report-table .gi-solid {
+  width: 22px;
+  height: 22px;
+  vertical-align: middle;
 }
 
-.comment {
-  min-height: 112px;
-  padding: calc(var(--space) * 3.5) calc(var(--space) * 4);
-  border: 1px solid var(--border);
+.report-empty th,
+.report-empty .gi-solid {
+  opacity: 0.55;
+}
+
+.report-empty th {
+  color: var(--muted);
+}
+
+
+.report-start {
+  width: 100%;
+  min-height: 48px;
+  font-size: var(--t-md);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.link-button {
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.link-button:hover {
+  color: var(--fg);
+}
+
+.coach {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: calc(var(--space) * 3) calc(var(--space) * 3);
+  min-height: 136px;
+  padding: calc(var(--space) * 3.5) calc(var(--space) * 4) calc(var(--space) * 3.5) calc(var(--space) * 3);
   border-radius: var(--r-md);
   /* Mixed in oklab so a red grade stays red; oklch would rotate the hue toward the surface's. */
-  background: color-mix(in oklab, var(--g, var(--surface)) 10%, var(--surface));
+  background: color-mix(in oklab, var(--g, var(--surface-2)) 16%, var(--surface-2));
   transition: background-color var(--dur) var(--ease-out);
 }
 
-.comment-body {
+/* The coach: a knight that talks you through the game, like chess.com's reviewer. */
+.coach-avatar.piece-icon {
+  grid-row: 1 / span 2;
+  width: 44px;
+  height: 44px;
+  padding: 4px;
+  border-radius: 22px;
+  background: var(--accent);
+}
+
+.coach-body,
+.coach-actions {
+  grid-column: 2;
+}
+
+.coach-body {
   display: grid;
+  align-content: start;
   gap: calc(var(--space) * 1.5);
   animation: kb-enter var(--dur) var(--ease-out) both;
 }
 
-.comment-lead {
+.coach-lead {
   display: flex;
   align-items: center;
   gap: calc(var(--space) * 2.5);
-  font-size: var(--t-md);
-  line-height: 1.35;
+  font: 600 var(--t-md) / 1.3 var(--font-sans);
 }
 
-.comment-lead strong {
-  font-family: var(--font-mono);
-  font-size: 0.86em;
-  letter-spacing: -0.02em;
-}
-
-.comment-lead .gi-solid {
+.coach-lead .gi-solid {
   animation: kb-pop var(--dur) var(--ease-out) both;
 }
 
-.comment-detail {
-  color: var(--muted);
+.coach-detail {
+  color: var(--fg);
+  opacity: 0.86;
 }
 
-.comment-detail strong {
+.coach-line {
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+.coach-line-label {
+  margin-right: 2px;
+  font: 600 var(--t-xs) / 1 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.coach-line strong {
   color: var(--fg);
 }
 
-.comment-line {
-  font: 400 var(--t-sm) / 1.5 var(--font-mono);
-  letter-spacing: -0.02em;
-}
-
-.comment-eval {
+.coach-eval {
   font: 400 var(--t-xs) / 1 var(--font-mono);
   color: var(--muted);
+}
+
+.coach-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+.coach-actions .button {
+  min-height: 34px;
+  gap: 6px;
+  padding: 0 calc(var(--space) * 3);
+  font-size: var(--t-sm);
+}
+
+.coach-actions .button[aria-pressed='true'] {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+}
+
+.coach-actions .gi {
+  width: 16px;
+  height: 16px;
+  color: var(--g-best);
+}
+
+.cg-movable cg-board {
+  cursor: pointer;
 }
 
 .moves {
   flex: 1;
   min-height: 120px;
   margin: 0;
-  padding: var(--space);
+  padding: 0;
   overflow-y: auto;
   list-style: none;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--surface);
 }
 
 .moves li {
@@ -1199,10 +1423,11 @@ button {
   align-items: center;
   gap: calc(var(--space) * 1.5);
   min-height: 30px;
-  padding: 0 calc(var(--space) * 2);
+  padding: 0 calc(var(--space) * 2) 0 var(--space);
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
   transition:
@@ -1219,17 +1444,12 @@ button {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-.move .gi {
-  width: 1.15em;
-  height: 1.15em;
-}
-
-.move-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--g);
-  opacity: 0.75;
+.move .gi-solid,
+.move-icon-gap {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 1px;
 }
 
 .move-empty {
@@ -1238,17 +1458,34 @@ button {
 
 .controls {
   display: flex;
-  gap: calc(var(--space) * 2);
+  gap: calc(var(--space) * 1.5);
 }
 
 .controls button {
-  min-width: 46px;
-  padding: 0 calc(var(--space) * 3);
+  min-width: 40px;
+  padding: 0 calc(var(--space) * 2.5);
   font-size: var(--t-sm);
 }
 
-.controls-flip {
-  margin-left: auto;
+.controls .controls-next {
+  flex: 1;
+  margin-left: calc(var(--space) * 1.5);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.controls .controls-next:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.controls .controls-next:disabled {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--muted);
 }
 
 .notice {
@@ -1322,7 +1559,7 @@ button {
 @media (max-width: 900px) {
   .home {
     grid-template-columns: 1fr;
-    grid-template-areas: 'top' 'head' 'user' 'pgn' 'foot';
+    grid-template-areas: 'top' 'head' 'preview' 'user' 'pgn' 'foot';
     padding: calc(var(--space) * 6) calc(var(--space) * 4) calc(var(--space) * 10);
   }
 
@@ -1384,28 +1621,29 @@ button {
     order: 3;
   }
 
-  .comment {
+  .panel-head {
     order: 4;
+  }
+
+  .coach,
+  .report {
+    order: 5;
     min-height: 0;
   }
 
   .controls {
-    order: 5;
-  }
-
-  .graph {
     order: 6;
   }
 
-  .turning {
+  .graph {
     order: 7;
   }
 
-  .progress {
+  .turning {
     order: 8;
   }
 
-  .summary {
+  .progress {
     order: 9;
   }
 
@@ -1415,8 +1653,17 @@ button {
     max-height: 320px;
   }
 
-  .controls button:not(.controls-flip) {
-    flex: 1;
+  /* The panel unwraps on phones, so its sections carry the surface themselves. */
+  .report,
+  .moves {
+    overflow: visible;
+    padding: calc(var(--space) * 3);
+    border-radius: var(--r-md);
+    background: var(--surface);
+  }
+
+  .moves {
+    overflow-y: auto;
   }
 }
 

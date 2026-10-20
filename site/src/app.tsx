@@ -1,5 +1,10 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fetchGames, reviewHash, type GameSummary, type Site } from './sources';
+import { parseGame } from './game';
+import { GRADES } from './review';
+import { Board } from './ui/board';
+import { GRADE_INFO, GradeIcon, badgeSvg } from './ui/grades';
+import { Piece } from './ui/piece';
 import { Review } from './ui/review';
 import { ThemePicker, reducedMotion } from './ui/theme';
 
@@ -69,23 +74,58 @@ function Home() {
 
   const me = username.trim().toLowerCase();
   const date = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+  // The hero shows a real moment from a real review: Morphy's queen sacrifice, 16. Qb8+.
+  const opera = useMemo(() => {
+    const game = parseGame(OPERA_GAME);
+    const ply = game.plies.find((p) => p.san === 'Qb8+')!;
+    return { ply, shapes: [{ orig: ply.to, customSvg: { html: badgeSvg('brilliant') } }] };
+  }, []);
 
   return (
     <main class="home">
       <div class="home-top">
-        <p class="wordmark">kibitz</p>
+        <p class="logo">
+          <Piece role="knight" color="white" class="logo-mark" />
+          <span class="wordmark">kibitz</span>
+        </p>
         <ThemePicker />
       </div>
       <header class="home-head">
-        <h1>Every move graded. No paywall, no daily limit.</h1>
+        <h1>
+          <span>Every move graded.</span> <span>No paywall, no daily limit.</span>
+        </h1>
         <p class="home-lede">
           Brilliant to blunder, accuracy for both sides, and the move you should have played. Stockfish runs on your own
           device, so the review costs nothing and your games never leave your browser.
         </p>
-        <a class="demo-link" href={reviewHash(OPERA_GAME)}>
-          No game handy? Review Morphy's Opera Game, 1858 <span aria-hidden="true">→</span>
-        </a>
+        <ul class="legend" aria-label="Move grades">
+          {GRADES.map((g) => (
+            <li key={g}>
+              <GradeIcon grade={g} solid />
+              {GRADE_INFO[g].label}
+            </li>
+          ))}
+        </ul>
       </header>
+
+      <a class="preview" href={reviewHash(OPERA_GAME)} aria-label="Open the review of Morphy's Opera Game, 1858">
+        <div class="preview-board">
+          <Board fen={opera.ply.fenAfter} orientation="white" lastMove={[opera.ply.from, opera.ply.to]} shapes={opera.shapes} />
+        </div>
+        <div class="coach preview-coach" style="--g:var(--g-brilliant)">
+          <Piece role="knight" color="white" class="coach-avatar" />
+          <div class="coach-body">
+            <p class="coach-lead">
+              <GradeIcon grade="brilliant" solid />
+              <span>16. Qb8+ is brilliant!</span>
+            </p>
+            <p class="coach-detail">It gives up the queen, and mate follows.</p>
+          </div>
+        </div>
+        <p class="preview-caption">
+          Morphy vs Duke Karl / Count Isouard, Paris 1858 <span class="preview-open">Open the full review →</span>
+        </p>
+      </a>
 
       <section class="home-card" aria-labelledby="by-user">
         <h2 id="by-user">Your recent games</h2>

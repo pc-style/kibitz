@@ -7,7 +7,7 @@
 - **Adjectives:** studious, candid, quick, analog. **Essence:** annotated scoresheet, nocturnal.
 
 ## Aesthetic and signature
-Printed chess literature (Informator glyphs, scoresheet columns) in a dark analysis room. Green-black felt tones, an off-white ink line, one brass accent.
+Close to chess.com's Game Review on purpose, so players feel at home: green and cream board, warm grays, a green call to action, solid round grade icons, and a coach that talks you through the game. Kibitz's own layer on top: Informator glyphs in mono, the ink-area eval graph, and real chess pieces (the board's own set) for the logo, the coach, and player tiles instead of illustrations.
 **Signature move:** the eval graph under the board. White's winning chances are drawn as a solid ink area, and notable moves are marked where they happened, so the turning points read at a glance and a click jumps there.
 
 ## Typography
@@ -17,14 +17,14 @@ Printed chess literature (Informator glyphs, scoresheet columns) in a dark analy
 
 ## Themes
 Four themes share one set of roles (`[data-theme]` on `<html>`, set before first paint from localStorage, falling back to the system light/dark preference):
-- **Felt** (default): green-black, brass accent, green board.
+- **Classic** (default): chess.com-style warm grays, green action, green and cream board. Replaced the earlier Felt theme; a saved "felt" preference maps to Classic.
 - **Walnut:** warm dark brown, copper accent, maple and walnut board.
 - **Midnight:** blue slate, cyan accent, blue board.
 - **Paper:** light, ink-blue accent, gray-blue board. Grade colors darken so they stay readable as text on white.
 
 Each swatch carries its own `data-theme`, so it previews that theme's board without duplicated color values. `--page-*` captures the page's colors for rings drawn around swatches.
 
-## Color (OKLCH, Felt shown)
+## Color (OKLCH, Felt values from v0.2 shown for reference; Classic lives in styles.css)
 | Role | Value |
 | --- | --- |
 | bg | `oklch(0.17 0.012 165)` |
@@ -57,9 +57,11 @@ Grade colors follow chess.com's conventions so they read instantly (teal brillia
 
 ## Craft decisions
 - **Layout:** home is an asymmetric 5/7 split with a sticky headline. The review screen gives the board the largest share, with a fixed-width side panel (summary, comment, moves, controls). On phones it becomes one column ordered for stepping through: board, verdict, controls, then graph, turning points, summary and moves.
-- **Review flow:** progress lives in the summary while the engine runs; accuracy shows player names; turning points under the graph jump to the brilliant moves and biggest swings.
+- **Review flow (chess.com's shape):** a report first (coach summary line, accuracy chips, grade counts with icons, Opening/Middlegame/Endgame grades, Start review), then a review mode: coach card with a plain-language reason for each move, Best (plays the engine move on the board) and Retry (find a better move yourself), Next key move (also N/P), and the move list. Turning points under the graph jump to the brilliant moves and biggest swings.
+- **No game rating:** a one-game estimate from the lite engine put a 3450 blitz player at 1950, so the row was dropped rather than show a misleading number.
+- **Home:** the hero visual is a real review moment (Morphy's 16. Qb8+ with its brilliant badge and coach line) that opens that review; the grade legend sits under the headline.
 - **Components:** buttons, fields, the segmented control, grade counts, and move cells all have hover, active, focus-visible, and disabled states. Grade counts jump to the next move with that grade.
 - **Accessibility:** visible focus ring in the accent color, keyboard navigation (arrows, Home/End, F to flip), labelled controls, a live progress region, and 24px-plus targets.
 
-## Slop audit (v0.2)
-No Inter/Roboto, no purple or indigo, no gradient text, no glassmorphism, no stacked border plus diffuse shadow, no cream background, no hero with three feature cards, no hover lifts or looping decoration. The structure follows the tool's job (input, then board and review), not a landing-page template. Checked in headless Chrome at 1440×900 and 390×844 in all four themes.
+## Slop audit (v0.3)
+No Inter/Roboto, no purple or indigo, no gradient text, no glassmorphism, no stacked border plus diffuse shadow, no cream background, no hero with three feature cards, no hover lifts or looping decoration. The structure follows the tool's job (input, then board and review), not a landing-page template. Checked in headless Chrome at 1440×900 and 390×844. v0.3 adds the chess.com-style report and coach; the coach avatar and logo are chess pieces from the board's set, not a drawn mascot.

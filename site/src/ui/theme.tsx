@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 
 export const THEMES = [
-  { id: 'felt', label: 'Felt' },
+  { id: 'classic', label: 'Classic' },
   { id: 'walnut', label: 'Walnut' },
   { id: 'midnight', label: 'Midnight' },
   { id: 'paper', label: 'Paper' },
@@ -11,7 +11,7 @@ export type Theme = (typeof THEMES)[number]['id'];
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const currentTheme = () => (document.documentElement.dataset.theme as Theme | undefined) ?? 'felt';
+const currentTheme = () => (document.documentElement.dataset.theme as Theme | undefined) ?? 'classic';
 
 let running: ViewTransition | null = null;
 

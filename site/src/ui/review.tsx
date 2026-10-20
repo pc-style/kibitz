@@ -1,13 +1,32 @@
 import type { DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
+import { Chess } from 'chess.js';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analysePositions, type PositionEval } from '../engine';
+import { explainMove, moveName, summarizeGame } from '../explain';
 import { epd, parseGame, type Game } from '../game';
-import { GRADES, gameAccuracy, reviewGame, type Grade, type MoveReview, type Score } from '../review';
-import { Board } from './board';
+import { GRADES, PHASES, gameAccuracy, lineWin, playerStats, reviewGame, type Grade, type MoveReview, type Score } from '../review';
+import { Board, type Movable } from './board';
 import { EvalGraph } from './graph';
 import { GRADE_INFO, GradeIcon, NOTABLE, badgeSvg } from './grades';
+import { Piece } from './piece';
 import { ThemePicker, reducedMotion } from './theme';
+
+/** Grades where Retry is offered: the moves worth finding again. */
+const RETRY: ReadonlySet<Grade> = new Set(['inaccuracy', 'mistake', 'miss', 'blunder']);
+const SIDE = { w: 'White', b: 'Black' } as const;
+
+interface Retry {
+  status: 'trying' | 'correct' | 'wrong' | 'revealed';
+  uci?: string;
+}
+
+/** Plays a UCI move on a position, for showing Best and Retry attempts on the board. */
+function play(fen: string, uci: string) {
+  const chess = new Chess(fen);
+  const m = chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+  return { fen: chess.fen(), from: m.from as Key, to: m.to as Key, san: m.san };
+}
 
 const DEPTHS = [
   { depth: 12, label: 'Quick' },
@@ -63,6 +82,10 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const [index, setIndex] = useState(0);
   const [orientation, setOrientation] = useState(initialOrientation);
   const [openings, setOpenings] = useState<Openings | null>(null);
+  // Like chess.com: a report first, then a move-by-move review with a coach comment.
+  const [mode, setMode] = useState<'summary' | 'review'>('summary');
+  const [retry, setRetry] = useState<Retry | null>(null);
+  const [showBest, setShowBest] = useState(false);
 
   useEffect(() => {
     import('../openings.json').then((m) => setOpenings({ book: new Set(m.default.book), names: m.default.names as Record<string, string> }));
@@ -101,12 +124,21 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     return () => ctrl.abort();
   }, [game, depth]);
 
+
   const { scores, moves } = useMemo(() => reviewGame(game, evals, openings?.book ?? null), [game, evals, openings]);
   const analysed = scores.filter(Boolean).length;
   const complete = analysed === total;
   const accuracy = useMemo(
     () => (complete ? gameAccuracy(scores as Score[], game.plies[0].color === 'w') : undefined),
     [complete, scores],
+  );
+  const stats = useMemo(() => (complete ? playerStats(game, scores as Score[], moves) : undefined), [complete, scores, moves]);
+
+  const h = game.headers;
+  const names = { w: h.White || 'White', b: h.Black || 'Black' };
+  const summary = useMemo(
+    () => (accuracy ? summarizeGame(game, moves, accuracy, names) : undefined),
+    [accuracy, moves],
   );
 
   // Held arrow keys and quick clicks step faster than the animations can play, so while stepping
@@ -120,36 +152,100 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     lastStep.current = now;
     clearTimeout(settle.current);
     settle.current = window.setTimeout(() => root.current?.removeAttribute('data-rapid'), 260);
+    setMode('review');
     setIndex(Math.max(0, Math.min(total - 1, i)));
   };
-  const indexRef = useRef(index);
-  indexRef.current = index;
 
+  // Key moments: every flagged move, for "Next key move" (and the N / P keys).
+  const keyMoments = useMemo(() => moves.flatMap((m, i) => (m && NOTABLE.has(m.grade) ? [i + 1] : [])), [moves]);
+  const nextKey = keyMoments.find((k) => k > index);
+  const prevKey = [...keyMoments].reverse().find((k) => k < index);
+
+  const nav = useRef({ index, nextKey, prevKey });
+  nav.current = { index, nextKey, prevKey };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.metaKey || e.ctrlKey) return;
-      const i = indexRef.current;
-      const map: Record<string, number> = { ArrowLeft: i - 1, ArrowRight: i + 1, ArrowUp: 0, Home: 0, ArrowDown: total - 1, End: total - 1 };
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.metaKey || e.ctrlKey || e.altKey) return;
+      const { index: i, nextKey: n, prevKey: p } = nav.current;
+      const map: Record<string, number | undefined> = {
+        ArrowLeft: i - 1,
+        ArrowRight: i + 1,
+        ArrowUp: 0,
+        Home: 0,
+        ArrowDown: total - 1,
+        End: total - 1,
+        n,
+        p,
+      };
       if (e.key in map) {
         e.preventDefault();
-        go(map[e.key]);
+        const to = map[e.key];
+        if (to !== undefined) go(to);
       } else if (e.key === 'f') setOrientation((o) => (o === 'w' ? 'b' : 'w'));
+      else if (e.key === 'Escape') setRetry(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [total]);
 
+  // Best and Retry belong to the move they were opened on.
+  useEffect(() => {
+    setRetry(null);
+    setShowBest(false);
+  }, [index]);
+
   const ply = index > 0 ? game.plies[index - 1] : undefined;
   const move = index > 0 ? moves[index - 1] : undefined;
-  const shapes = useMemo<DrawShape[]>(() => {
-    if (!ply || !move) return [];
-    const out: DrawShape[] = [{ orig: ply.to, customSvg: { html: badgeSvg(move.grade) } }];
-    const best = evals[index - 1]?.lines[0]?.pv[0];
-    if (move.best && best) out.push({ orig: best.slice(0, 2) as Key, dest: best.slice(2, 4) as Key, brush: 'best' });
-    return out;
-  }, [ply, move, evals, index]);
+  const lines = index > 0 ? (evals[index - 1]?.lines ?? []) : [];
+  const bestUci = move?.best ? lines[0]?.pv[0] : undefined;
+  const canRetry = !!ply && !!move && RETRY.has(move.grade) && !!lines[0];
 
-  // One short announcement once stepping pauses, instead of re-reading the comment card on every move.
+  const onRetryMove = (orig: Key, dest: Key) => {
+    if (!ply) return;
+    const piece = new Chess(ply.fenBefore).get(orig as never);
+    const promotion = piece?.type === 'p' && (dest[1] === '8' || dest[1] === '1') ? 'q' : '';
+    const uci = `${orig}${dest}${promotion}`;
+    // The engine's top move counts, and so does its second choice when it's nearly as good.
+    const ok = uci === lines[0]?.pv[0] || (!!lines[1] && uci === lines[1].pv[0] && lineWin(lines[0]) - lineWin(lines[1]) <= 5);
+    setRetry({ status: ok ? 'correct' : 'wrong', uci });
+  };
+
+  // What the board shows: the game position, or a Best / Retry variation on top of it.
+  const view = useMemo(() => {
+    const badge = (grade: Grade, at: Key): DrawShape => ({ orig: at, customSvg: { html: badgeSvg(grade) } });
+    if (ply && retry) {
+      if (retry.status === 'trying') {
+        const prev = game.plies[index - 2];
+        const color = ply.color === 'w' ? ('white' as const) : ('black' as const);
+        const dests = new Map<Key, Key[]>();
+        for (const m of new Chess(ply.fenBefore).moves({ verbose: true })) dests.set(m.from as Key, [...(dests.get(m.from as Key) ?? []), m.to as Key]);
+        const movable: Movable = { color, dests, onMove: onRetryMove };
+        return { fen: ply.fenBefore, lastMove: prev ? [prev.from, prev.to] : undefined, shapes: [], movable };
+      }
+      const uci = retry.status === 'revealed' ? lines[0].pv[0] : retry.uci!;
+      const p = play(ply.fenBefore, uci);
+      return { fen: p.fen, lastMove: [p.from, p.to], shapes: [badge(retry.status === 'wrong' ? 'miss' : 'best', p.to)] };
+    }
+    if (ply && showBest && bestUci) {
+      const p = play(ply.fenBefore, bestUci);
+      return { fen: p.fen, lastMove: [p.from, p.to], shapes: [badge('best', p.to)] };
+    }
+    const shapes: DrawShape[] = [];
+    if (ply && move) {
+      shapes.push(badge(move.grade, ply.to));
+      if (bestUci) shapes.push({ orig: bestUci.slice(0, 2) as Key, dest: bestUci.slice(2, 4) as Key, brush: 'best' });
+    }
+    return { fen: game.fens[index], lastMove: ply ? [ply.from, ply.to] : undefined, shapes };
+  }, [index, ply, move, retry, showBest, bestUci, lines]);
+
+  const opening = useMemo(() => {
+    if (!openings) return game.headers.Opening;
+    let name = game.headers.Opening;
+    for (let i = 0; i < Math.min(index, game.plies.length); i++) name = openings.names[epd(game.plies[i].fenAfter)] ?? name;
+    return name;
+  }, [openings, index, game]);
+
+  // One short announcement once stepping pauses, instead of re-reading the coach card on every move.
   const [announcement, setAnnouncement] = useState('');
   useEffect(() => {
     const text = !ply
@@ -159,21 +255,13 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     return () => clearTimeout(timer);
   }, [index, move?.grade, move?.best]);
 
-  const opening = useMemo(() => {
-    if (!openings) return game.headers.Opening;
-    let name = game.headers.Opening;
-    for (let i = 0; i < Math.min(index, game.plies.length); i++) name = openings.names[epd(game.plies[i].fenAfter)] ?? name;
-    return name;
-  }, [openings, index, game]);
-
   const jumpTo = (grade: Grade, color: 'w' | 'b') => {
     const hits = game.plies.flatMap((p, i) => (p.color === color && moves[i]?.grade === grade ? [i + 1] : []));
-    if (hits.length) go(hits.find((h) => h > index) ?? hits[0]);
+    if (hits.length) go(hits.find((x) => x > index) ?? hits[0]);
   };
 
-  const h = game.headers;
   const player = (c: 'w' | 'b') => ({
-    name: (c === 'w' ? h.White : h.Black) || (c === 'w' ? 'White' : 'Black'),
+    name: names[c],
     elo: c === 'w' ? h.WhiteElo : h.BlackElo,
     accuracy: accuracy?.[c],
   });
@@ -184,11 +272,12 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   return (
     <div class="review" ref={root}>
       <header class="topbar">
-        <a class="wordmark" href="#" aria-label="Kibitz home">
-          kibitz
+        <a class="logo" href="#" aria-label="Kibitz home">
+          <Piece role="knight" color="white" class="logo-mark" />
+          <span class="wordmark">kibitz</span>
         </a>
         <p class="topbar-game">
-          {player('w').name} vs {player('b').name}
+          {names.w} vs {names.b}
           {h.Result && h.Result !== '*' ? ` · ${h.Result.replace('1/2-1/2', '½-½')}` : ''}
           {h.Date && !h.Date.includes('?') ? ` · ${h.Date.replaceAll('.', '-')}` : ''}
         </p>
@@ -218,10 +307,11 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
           <EvalBar score={score} orientation={orientation} />
           <div class="board">
             <Board
-              fen={game.fens[index]}
+              fen={view.fen}
               orientation={orientation === 'w' ? 'white' : 'black'}
-              lastMove={ply ? [ply.from, ply.to] : undefined}
-              shapes={shapes}
+              lastMove={view.lastMove}
+              shapes={view.shapes}
+              movable={view.movable}
             />
           </div>
         </div>
@@ -232,7 +322,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
           {failure ? (
             <span class="progress-error">Engine stopped: {failure}</span>
           ) : complete ? (
-            `Reviewed at depth ${depth} with Stockfish 19 on your device. Arrow keys step through moves, F flips the board.`
+            `Reviewed at depth ${depth} with Stockfish 19 on your device. Arrows step through moves, N jumps to the next key move, F flips the board.`
           ) : (
             'Stockfish is running in this tab. Moves get graded as their positions finish.'
           )}
@@ -240,46 +330,94 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
       </section>
 
       <aside class="panel">
-        <Summary
-          moves={moves}
-          game={game}
-          accuracy={accuracy}
-          names={{ w: player('w').name, b: player('b').name }}
-          analysed={analysed}
-          total={total}
-          running={!failure}
-          onJump={jumpTo}
-        />
-        <Comment game={game} index={index} move={move} before={scores[index - 1]} after={score} opening={opening} />
-        <p class="visually-hidden" aria-live="polite">
-          {announcement}
-        </p>
-        <MoveList game={game} moves={moves} current={index} onSelect={go} />
-        <nav class="controls" aria-label="Move navigation">
-          <button type="button" onClick={() => go(0)} aria-label="First move" disabled={index === 0}>
-            <NavIcon d="M7 6v12M18 6l-8 6 8 6z" />
-          </button>
-          <button type="button" onClick={() => go(index - 1)} aria-label="Previous move" disabled={index === 0}>
-            <NavIcon d="M16 6l-8 6 8 6z" />
-          </button>
-          <button type="button" onClick={() => go(index + 1)} aria-label="Next move" disabled={index === total - 1}>
-            <NavIcon d="M8 6l8 6-8 6z" />
-          </button>
-          <button type="button" onClick={() => go(total - 1)} aria-label="Last move" disabled={index === total - 1}>
-            <NavIcon d="M17 6v12M6 6l8 6-8 6z" />
-          </button>
-          <button type="button" class="controls-flip" onClick={() => setOrientation((o) => (o === 'w' ? 'b' : 'w'))}>
-            Flip board
-          </button>
-        </nav>
+        {mode === 'summary' ? (
+          <Report
+            game={game}
+            moves={moves}
+            accuracy={accuracy}
+            stats={stats}
+            summary={summary}
+            names={names}
+            analysed={analysed}
+            total={total}
+            running={!failure}
+            onJump={jumpTo}
+            onStart={() => go(keyMoments[0] ?? 1)}
+          />
+        ) : (
+          <>
+            <div class="panel-head">
+              <button type="button" class="link-button" onClick={() => setMode('summary')}>
+                <span aria-hidden="true">←</span> Summary
+              </button>
+              <span class="panel-title">Game Review</span>
+            </div>
+            <Coach
+              game={game}
+              index={index}
+              move={move}
+              evals={evals}
+              before={scores[index - 1]}
+              after={score}
+              opening={opening}
+              retry={retry}
+              showBest={showBest}
+              canRetry={canRetry}
+              onBest={() => setShowBest((v) => !v)}
+              onRetry={(status) => setRetry(status ? { status } : null)}
+            />
+            <p class="visually-hidden" aria-live="polite">
+              {announcement}
+            </p>
+            <MoveList game={game} moves={moves} current={index} onSelect={go} />
+            <nav class="controls" aria-label="Move navigation">
+              <button type="button" onClick={() => go(0)} aria-label="First move" disabled={index === 0}>
+                <NavIcon d="M7 6v12M18 6l-8 6 8 6z" />
+              </button>
+              <button type="button" onClick={() => go(index - 1)} aria-label="Previous move" disabled={index === 0}>
+                <NavIcon d="M16 6l-8 6 8 6z" />
+              </button>
+              <button type="button" onClick={() => go(index + 1)} aria-label="Next move" disabled={index === total - 1}>
+                <NavIcon d="M8 6l8 6-8 6z" />
+              </button>
+              <button type="button" onClick={() => go(total - 1)} aria-label="Last move" disabled={index === total - 1}>
+                <NavIcon d="M17 6v12M6 6l8 6-8 6z" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrientation((o) => (o === 'w' ? 'b' : 'w'))}
+                aria-label="Flip board"
+                title="Flip board (F)"
+              >
+                <NavIcon d="M7 4v14M4 15l3 3 3-3M17 20V6M14 9l3-3 3 3" stroke />
+              </button>
+              <button
+                type="button"
+                class="button-primary controls-next"
+                onClick={() => nextKey !== undefined && go(nextKey)}
+                disabled={nextKey === undefined}
+                title="Next key move (N)"
+              >
+                {nextKey === undefined ? 'No more key moves' : 'Next key move'}
+              </button>
+            </nav>
+          </>
+        )}
       </aside>
     </div>
   );
 }
 
-const NavIcon = ({ d }: { d: string }) => (
+const NavIcon = ({ d, stroke }: { d: string; stroke?: boolean }) => (
   <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-    <path d={d} fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+    <path
+      d={d}
+      fill={stroke ? 'none' : 'currentColor'}
+      stroke="currentColor"
+      stroke-width={stroke ? 2 : 1.6}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
   </svg>
 );
 
@@ -306,13 +444,15 @@ const fmt = (x?: number) => (x === undefined || Number.isNaN(x) ? '—' : x.toFi
 
 function PlayerStrip({ name, elo, accuracy, color }: { name: string; elo?: string; accuracy?: number; color: 'w' | 'b' }) {
   return (
-    <div class="player">
-      <span class={`player-swatch player-swatch-${color}`} aria-hidden="true" />
+    <div class={`player player-${color}`}>
+      <Piece role="pawn" color={color === 'w' ? 'white' : 'black'} class="player-avatar" />
       <span class="player-name">{name}</span>
       {elo && elo !== '?' ? <span class="player-elo">{elo}</span> : null}
-      <span class="player-accuracy" title="Accuracy">
-        {accuracy !== undefined && !Number.isNaN(accuracy) ? fmt(accuracy) : ''}
-      </span>
+      {accuracy !== undefined && !Number.isNaN(accuracy) ? (
+        <span class={`acc-chip acc-chip-${color} player-accuracy`} title="Accuracy">
+          {fmt(accuracy)}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -328,44 +468,65 @@ function EvalBar({ score, orientation }: { score?: Score; orientation: 'w' | 'b'
   );
 }
 
-function Accuracy({ name, value, align }: { name: string; value?: number; align: 'start' | 'end' }) {
+function AccuracyChip({ value, color }: { value?: number; color: 'w' | 'b' }) {
   const shown = useCountUp(value);
   return (
-    <div class={`accuracy accuracy-${align}`}>
-      <span class="summary-label">{name}</span>
-      <strong aria-hidden="true">{fmt(shown)}</strong>
+    <span class={`acc-chip acc-chip-${color}`}>
+      <span aria-hidden="true">{fmt(shown)}</span>
       <span class="visually-hidden">{fmt(value)}</span>
-    </div>
+    </span>
   );
 }
 
-function Summary(props: {
-  moves: (MoveReview | undefined)[];
+const PHASE_LABEL = { opening: 'Opening', middlegame: 'Middlegame', endgame: 'Endgame' } as const;
+
+/** The report: chess.com's summary layout, with the counts doubling as jumps to those moves. */
+function Report(props: {
   game: Game;
+  moves: (MoveReview | undefined)[];
   accuracy?: { w: number; b: number };
+  stats?: ReturnType<typeof playerStats>;
+  summary?: string;
   names: { w: string; b: string };
   analysed: number;
   total: number;
   running: boolean;
   onJump: (grade: Grade, color: 'w' | 'b') => void;
+  onStart: () => void;
 }) {
-  const { moves, game, accuracy, names, analysed, total, running, onJump } = props;
+  const { game, moves, accuracy, stats, summary, names, analysed, total, running, onJump, onStart } = props;
   const counts = (grade: Grade, color: 'w' | 'b') => game.plies.filter((p, i) => p.color === color && moves[i]?.grade === grade).length;
+  const count = (grade: Grade, color: 'w' | 'b') => {
+    const n = counts(grade, color);
+    return (
+      <button type="button" disabled={!n} onClick={() => onJump(grade, color)} aria-label={`${n} ${grade} by ${names[color]}`}>
+        <span class="count" key={n}>
+          {n}
+        </span>
+      </button>
+    );
+  };
+  const phaseIcon = (grade: Grade | null | undefined, phase: string, color: 'w' | 'b') =>
+    grade ? (
+      <span title={`${names[color]}: ${GRADE_INFO[grade].label.toLowerCase()} ${phase.toLowerCase()}`}>
+        <GradeIcon grade={grade} solid />
+        <span class="visually-hidden">{GRADE_INFO[grade].label}</span>
+      </span>
+    ) : (
+      <span class="muted">—</span>
+    );
 
   return (
-    <section class="summary" aria-label="Game summary">
-      {accuracy ? (
-        <div class="summary-accuracy">
-          <Accuracy name={names.w} value={accuracy.w} align="start" />
-          <span class="summary-label summary-accuracy-title">Accuracy</span>
-          <Accuracy name={names.b} value={accuracy.b} align="end" />
-        </div>
+    <section class="report" aria-label="Game review summary">
+      <h2 class="report-title">Game Review</h2>
+      {summary ? (
+        <p class="report-coach">{summary}</p>
       ) : (
-        <div class="summary-progress">
-          <span class="summary-label">Reviewing on your device</span>
+        <div class="report-progress">
+          <span class="report-label">Reviewing on your device</span>
           <strong>
             {analysed}
-            <span class="summary-total"> / {total} positions</span>
+            <span class="report-total"> / {total} positions</span>
           </strong>
           <span
             class="progress-bar"
@@ -379,51 +540,58 @@ function Summary(props: {
           />
         </div>
       )}
-      <table class="grades">
-        <caption class="visually-hidden">Moves by grade. Select a count to jump to the next such move.</caption>
-        <thead class="visually-hidden">
+      <table class="report-table">
+        <caption class="visually-hidden">Accuracy, moves by grade, and how each phase went. Select a count to jump to the next such move.</caption>
+        <thead>
           <tr>
-            <th scope="col">{names.w}</th>
-            <th scope="col">Grade</th>
-            <th scope="col">{names.b}</th>
+            <td />
+            <th scope="col" class="report-name">
+              <span class="player-swatch player-swatch-w" aria-hidden="true" />
+              {names.w}
+            </th>
+            <td />
+            <th scope="col" class="report-name">
+              <span class="player-swatch player-swatch-b" aria-hidden="true" />
+              {names.b}
+            </th>
           </tr>
         </thead>
         <tbody>
-          {GRADES.map((grade) => {
-            const w = counts(grade, 'w');
-            const b = counts(grade, 'b');
-            return (
-              <tr key={grade} class={w + b === 0 ? 'grades-empty' : ''}>
-                <td>
-                  <button type="button" disabled={!w} onClick={() => onJump(grade, 'w')} aria-label={`${w} ${grade} by ${names.w}`}>
-                    <span class="count" key={w}>
-                      {w}
-                    </span>
-                  </button>
-                </td>
-                <th scope="row">
-                  <GradeIcon grade={grade} />
-                  {GRADE_INFO[grade].label}
-                </th>
-                <td>
-                  <button type="button" disabled={!b} onClick={() => onJump(grade, 'b')} aria-label={`${b} ${grade} by ${names.b}`}>
-                    <span class="count" key={b}>
-                      {b}
-                    </span>
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
+          <tr class="report-accuracy">
+            <th scope="row">Accuracy</th>
+            <td>{accuracy ? <AccuracyChip value={accuracy.w} color="w" /> : <span class="acc-chip acc-chip-w">—</span>}</td>
+            <td />
+            <td>{accuracy ? <AccuracyChip value={accuracy.b} color="b" /> : <span class="acc-chip acc-chip-b">—</span>}</td>
+          </tr>
+        </tbody>
+        <tbody class="report-grades">
+          {GRADES.map((grade) => (
+            <tr key={grade} class={counts(grade, 'w') + counts(grade, 'b') === 0 ? 'report-empty' : ''}>
+              <th scope="row">{GRADE_INFO[grade].label}</th>
+              <td>{count(grade, 'w')}</td>
+              <td>
+                <GradeIcon grade={grade} solid />
+              </td>
+              <td>{count(grade, 'b')}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tbody class="report-stats">
+          {PHASES.map((phase) => (
+            <tr key={phase}>
+              <th scope="row">{PHASE_LABEL[phase]}</th>
+              <td>{phaseIcon(stats?.w.phases[phase], PHASE_LABEL[phase], 'w')}</td>
+              <td />
+              <td>{phaseIcon(stats?.b.phases[phase], PHASE_LABEL[phase], 'b')}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
+      <button type="button" class="button button-primary report-start" onClick={onStart}>
+        Start review
+      </button>
     </section>
   );
-}
-
-function moveName(game: Game, i: number) {
-  const p = game.plies[i];
-  return `${p.moveNumber}${p.color === 'w' ? '.' : '…'} ${p.san}`;
 }
 
 const TURNING: ReadonlySet<Grade> = new Set(['brilliant', 'great', 'miss', 'mistake', 'blunder']);
@@ -448,7 +616,7 @@ function TurningPoints({ game, moves, current, onSelect }: { game: Game; moves: 
           onClick={() => onSelect(i + 1)}
           title={GRADE_INFO[m.grade].label}
         >
-          <GradeIcon grade={m.grade} />
+          <GradeIcon grade={m.grade} solid />
           <span class="san">{moveName(game, i)}</span>
         </button>
       ))}
@@ -456,56 +624,128 @@ function TurningPoints({ game, moves, current, onSelect }: { game: Game; moves: 
   );
 }
 
-function Comment(props: { game: Game; index: number; move?: MoveReview; before?: Score; after?: Score; opening?: string }) {
-  const { game, index, move, before, after, opening } = props;
-  const tint = move ? `--g:var(--g-${move.grade})` : undefined;
-  let body;
-  if (index === 0) {
-    body = (
-      <>
-        <p class="comment-lead">{opening ?? 'Starting position'}</p>
-        <p class="comment-detail">Step through the game to see how each move was graded.</p>
-      </>
-    );
+/** The coach card: what the move was, why, and the chess.com-style Best / Retry actions. */
+function Coach(props: {
+  game: Game;
+  index: number;
+  move?: MoveReview;
+  evals: (PositionEval | undefined)[];
+  before?: Score;
+  after?: Score;
+  opening?: string;
+  retry: Retry | null;
+  showBest: boolean;
+  canRetry: boolean;
+  onBest: () => void;
+  onRetry: (status: Retry['status'] | null) => void;
+}) {
+  const { game, index, move, evals, before, after, opening, retry, showBest, canRetry, onBest, onRetry } = props;
+  const ply = index > 0 ? game.plies[index - 1] : undefined;
+  let grade: Grade | undefined = move?.grade;
+  let lead: string;
+  let detail: string | undefined;
+  let actions = null;
+  let line: string[] | undefined;
+
+  if (!ply) {
+    lead = opening ?? 'Starting position';
+    detail = 'Step through the moves, or jump between key moments.';
   } else if (!move) {
-    body = (
-      <>
-        <p class="comment-lead">
-          <strong>{moveName(game, index - 1)}</strong>
-        </p>
-        <p class="comment-detail">Still analysing this move…</p>
-      </>
-    );
+    lead = moveName(game, index - 1);
+    detail = 'Still analysing this move…';
+  } else if (retry) {
+    const side = SIDE[ply.color];
+    const tried = retry.uci ? play(ply.fenBefore, retry.uci).san : undefined;
+    if (retry.status === 'trying') {
+      grade = undefined;
+      lead = `Find a better move for ${side}.`;
+      detail = `${moveName(game, index - 1)} was ${GRADE_INFO[move.grade].phrase}. Play your move on the board.`;
+      actions = (
+        <>
+          <button type="button" class="button" onClick={() => onRetry('revealed')}>
+            Show answer
+          </button>
+          <button type="button" class="link-button" onClick={() => onRetry(null)}>
+            Cancel
+          </button>
+        </>
+      );
+    } else if (retry.status === 'correct') {
+      grade = 'best';
+      lead = `Correct! ${tried} ${tried === move.best ? 'is the best move' : 'works too'}.`;
+      actions = (
+        <button type="button" class="button" onClick={() => onRetry(null)}>
+          Done
+        </button>
+      );
+    } else if (retry.status === 'wrong') {
+      grade = 'miss';
+      lead = `${tried} isn't it.`;
+      detail = 'Try again, or see the answer.';
+      actions = (
+        <>
+          <button type="button" class="button button-primary" onClick={() => onRetry('trying')}>
+            Try again
+          </button>
+          <button type="button" class="button" onClick={() => onRetry('revealed')}>
+            Show answer
+          </button>
+        </>
+      );
+    } else {
+      grade = 'best';
+      lead = `The best move was ${move.best}.`;
+      line = move.bestLine;
+      actions = (
+        <button type="button" class="button" onClick={() => onRetry(null)}>
+          Done
+        </button>
+      );
+    }
   } else {
-    body = (
-      <>
-        <p class="comment-lead">
-          <GradeIcon grade={move.grade} solid />
-          <span>
-            <strong>{moveName(game, index - 1)}</strong> is {GRADE_INFO[move.grade].phrase}.
-          </span>
+    const winAfter = after ? (ply.color === 'w' ? after.whiteWin : 100 - after.whiteWin) : 50;
+    ({ lead, detail } = explainMove(game, index - 1, move, evals, winAfter, opening));
+    line = move.best ? move.bestLine : undefined;
+    if (move.best || canRetry) {
+      actions = (
+        <>
+          {move.best ? (
+            <button type="button" class="button" aria-pressed={showBest} onClick={onBest}>
+              <GradeIcon grade="best" /> Best
+            </button>
+          ) : null}
+          {canRetry ? (
+            <button type="button" class="button" onClick={() => onRetry('trying')}>
+              Retry
+            </button>
+          ) : null}
+        </>
+      );
+    }
+  }
+
+  return (
+    <section class="coach" style={grade ? `--g:var(--g-${grade})` : undefined}>
+      <Piece role="knight" color="white" class="coach-avatar" />
+      <div class="coach-body" key={`${index}-${retry?.status ?? ''}`}>
+        <p class="coach-lead">
+          {grade ? <GradeIcon grade={grade} solid /> : null}
+          <span>{lead}</span>
         </p>
-        {move.grade === 'book' && opening ? <p class="comment-detail">{opening}</p> : null}
-        {move.best ? (
-          <p class="comment-detail">
-            {move.grade === 'miss' ? 'You had ' : 'Best was '}
-            <strong class="san">{move.best}</strong>
-            {move.bestLine && move.bestLine.length > 1 ? <span class="comment-line"> {move.bestLine.slice(1).join(' ')}</span> : null}
+        {detail ? <p class="coach-detail">{detail}</p> : null}
+        {line && line.length ? (
+          <p class="coach-line">
+            <span class="coach-line-label">{retry ? 'Line' : 'Best'}</span> <strong class="san">{line[0]}</strong>
+            {line.length > 1 ? <span class="san coach-line-rest"> {line.slice(1).join(' ')}</span> : null}
           </p>
         ) : null}
-        {before && after && move.grade !== 'book' ? (
-          <p class="comment-eval">
+        {before && after && move && !retry && move.grade !== 'book' ? (
+          <p class="coach-eval">
             {before.label} → {after.label}
           </p>
         ) : null}
-      </>
-    );
-  }
-  return (
-    <section class="comment" style={tint}>
-      <div class="comment-body" key={index}>
-        {body}
       </div>
+      {actions ? <div class="coach-actions">{actions}</div> : null}
     </section>
   );
 }
@@ -536,8 +776,8 @@ function MoveList({ game, moves, current, onSelect }: { game: Game; moves: (Move
         style={m ? `--g:var(--g-${m.grade})` : undefined}
         title={m ? GRADE_INFO[m.grade].label : undefined}
       >
+        {m && NOTABLE.has(m.grade) ? <GradeIcon grade={m.grade} solid /> : <span class="move-icon-gap" aria-hidden="true" />}
         <span class="san">{p.san}</span>
-        {m && NOTABLE.has(m.grade) ? <GradeIcon grade={m.grade} /> : m ? <span class="move-dot" aria-hidden="true" /> : null}
       </button>
     );
   };
@@ -551,7 +791,7 @@ function MoveList({ game, moves, current, onSelect }: { game: Game; moves: (Move
         const wi = r * 2 - offset;
         return (
           <li key={r}>
-            <span class="moves-num">{game.plies[Math.max(0, wi)].moveNumber}</span>
+            <span class="moves-num">{game.plies[Math.max(0, wi)].moveNumber}.</span>
             {wi < 0 ? <span class="move move-empty" /> : cell(wi)}
             {cell(wi + 1)}
           </li>
