@@ -7,10 +7,15 @@
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Kibitz · free chess game review</title>
     <script>
+      // Apply saved look before first paint (src/settings.ts owns these keys after load).
       try {
-        const saved = localStorage.getItem('kibitz:theme');
-        document.documentElement.dataset.theme =
-          saved && saved !== 'felt' ? saved : matchMedia('(prefers-color-scheme: light)').matches && !saved ? 'paper' : 'classic';
+        const root = document.documentElement;
+        const saved = JSON.parse(localStorage.getItem('kibitz:settings') || '{}');
+        const legacy = localStorage.getItem('kibitz:theme');
+        const theme = saved.theme || (legacy && legacy !== 'felt' ? legacy : null);
+        root.dataset.theme = theme || (legacy ? 'classic' : matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'classic');
+        if (saved.pieces) root.dataset.pieces = saved.pieces;
+        if (saved.motion === false) root.dataset.motion = 'off';
       } catch {}
     </script>
   </head>

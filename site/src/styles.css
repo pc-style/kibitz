@@ -154,6 +154,123 @@
   color-scheme: light;
 }
 
+/* Deep teal-navy with an aqua accent and a sea-green board. */
+[data-theme='marine'] {
+  --board-shadow: 0 10px 28px oklch(0 0 0 / 0.38);
+  --bg: oklch(0.19 0.03 225);
+  --surface: oklch(0.225 0.034 225);
+  --surface-2: oklch(0.27 0.038 225);
+  --surface-hover: oklch(0.31 0.04 225);
+  --row-alt: oklch(0.245 0.035 225);
+  --border: oklch(0.35 0.036 225);
+  --border-strong: oklch(0.44 0.04 225);
+  --fg: oklch(0.95 0.012 200);
+  --muted: oklch(0.75 0.03 205);
+  --accent: oklch(0.82 0.12 172);
+  --accent-hover: oklch(0.87 0.1 172);
+  --accent-fg: oklch(0.2 0.04 190);
+  --accent-tint: oklch(0.82 0.12 172 / 0.16);
+  --sq-light: oklch(0.87 0.04 185);
+  --sq-dark: oklch(0.56 0.075 205);
+  --last-move: oklch(0.85 0.12 160 / 0.45);
+  --board-edge: oklch(0.15 0.03 225);
+  --night: oklch(0.14 0.028 225);
+  --day: oklch(0.94 0.015 190);
+  --g-ink: oklch(0.19 0.03 225);
+  color-scheme: dark;
+}
+
+/* Dark wine-gray with a coral accent and a blush-and-rose board. */
+[data-theme='coral'] {
+  --board-shadow: 0 10px 28px oklch(0 0 0 / 0.38);
+  --bg: oklch(0.2 0.018 10);
+  --surface: oklch(0.235 0.022 10);
+  --surface-2: oklch(0.28 0.026 10);
+  --surface-hover: oklch(0.32 0.028 10);
+  --row-alt: oklch(0.255 0.022 10);
+  --border: oklch(0.36 0.026 10);
+  --border-strong: oklch(0.45 0.03 10);
+  --fg: oklch(0.95 0.012 30);
+  --muted: oklch(0.76 0.03 20);
+  --accent: oklch(0.76 0.14 30);
+  --accent-hover: oklch(0.81 0.12 32);
+  --accent-fg: oklch(0.2 0.04 25);
+  --accent-tint: oklch(0.76 0.14 30 / 0.18);
+  --sq-light: oklch(0.91 0.035 45);
+  --sq-dark: oklch(0.64 0.1 15);
+  --last-move: oklch(0.88 0.12 75 / 0.5);
+  --board-edge: oklch(0.16 0.016 10);
+  --night: oklch(0.15 0.015 10);
+  --day: oklch(0.95 0.015 40);
+  --g-ink: oklch(0.2 0.018 10);
+  color-scheme: dark;
+}
+
+/* Neutral grays with a single yellow accent: nothing tinted but the moves themselves. */
+[data-theme='graphite'] {
+  --board-shadow: 0 10px 28px oklch(0 0 0 / 0.4);
+  --bg: oklch(0.2 0 0);
+  --surface: oklch(0.235 0 0);
+  --surface-2: oklch(0.28 0 0);
+  --surface-hover: oklch(0.32 0 0);
+  --row-alt: oklch(0.255 0 0);
+  --border: oklch(0.35 0 0);
+  --border-strong: oklch(0.44 0 0);
+  --fg: oklch(0.95 0 0);
+  --muted: oklch(0.74 0 0);
+  --accent: oklch(0.88 0.16 98);
+  --accent-hover: oklch(0.92 0.14 98);
+  --accent-fg: oklch(0.22 0.03 98);
+  --accent-tint: oklch(0.88 0.16 98 / 0.14);
+  --sq-light: oklch(0.82 0 0);
+  --sq-dark: oklch(0.6 0 0);
+  --last-move: oklch(0.88 0.15 98 / 0.4);
+  --board-edge: oklch(0.15 0 0);
+  --night: oklch(0.13 0 0);
+  --day: oklch(0.93 0 0);
+  --g-ink: oklch(0.2 0 0);
+  color-scheme: dark;
+}
+
+/* Light, ink-on-paper like a printed diagram: black actions, white and gray squares. */
+[data-theme='newsprint'] {
+  --board-shadow: 0 6px 18px oklch(0.2 0 0 / 0.16);
+  --bg: oklch(0.975 0.003 90);
+  --surface: oklch(0.995 0.002 90);
+  --surface-2: oklch(0.94 0.004 90);
+  --surface-hover: oklch(0.91 0.005 90);
+  --row-alt: oklch(0.97 0.003 90);
+  --border: oklch(0.86 0.005 90);
+  --border-strong: oklch(0.72 0.006 90);
+  --fg: oklch(0.18 0.005 90);
+  --muted: oklch(0.46 0.006 90);
+  --accent: oklch(0.22 0.005 90);
+  --accent-hover: oklch(0.32 0.005 90);
+  --accent-fg: oklch(0.98 0.003 90);
+  --accent-tint: oklch(0.22 0.005 90 / 0.08);
+  --error: oklch(0.5 0.18 25);
+  --sq-light: oklch(0.985 0.002 90);
+  --sq-dark: oklch(0.76 0.006 90);
+  --last-move: oklch(0.86 0.1 95 / 0.55);
+  --board-edge: oklch(0.2 0.005 90);
+  --night: oklch(0.22 0.005 90);
+  --day: oklch(0.985 0.002 90);
+  --g-ink: oklch(0.99 0 0);
+
+  --g-brilliant: oklch(0.56 0.11 195);
+  --g-great: oklch(0.5 0.14 250);
+  --g-best: oklch(0.54 0.15 145);
+  --g-excellent: oklch(0.54 0.15 145);
+  --g-good: oklch(0.55 0.05 150);
+  --g-book: oklch(0.53 0.07 60);
+  --g-inaccuracy: oklch(0.63 0.14 85);
+  --g-mistake: oklch(0.6 0.15 55);
+  --g-miss: oklch(0.55 0.17 20);
+  --g-blunder: oklch(0.52 0.2 25);
+  --g-forced: oklch(0.55 0.005 90);
+  color-scheme: light;
+}
+
 /* The page's own colors, captured once so theme swatches (which carry their own theme) can still use them. */
 html {
   --page-bg: var(--bg);
@@ -246,8 +363,7 @@ button {
 }
 
 .button,
-.controls button,
-.depth select {
+.controls button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -267,8 +383,7 @@ button {
 }
 
 .button:hover,
-.controls button:hover:not(:disabled),
-.depth select:hover {
+.controls button:hover:not(:disabled) {
   background: var(--surface-hover);
   border-color: var(--border-strong);
 }
@@ -372,40 +487,204 @@ button {
   color: var(--fg);
 }
 
-/* Theme swatches: each one carries its own data-theme, so it previews that theme's board. */
-.themes {
-  display: inline-flex;
-  gap: 8px;
-}
-
-.theme-swatch {
-  width: 24px;
-  height: 24px;
+/* Settings: a popover panel pinned under the top-right gear. */
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
   padding: 0;
-  border: 1px solid var(--board-edge);
+  border: 1px solid var(--border);
   border-radius: var(--r-sm);
-  background: repeating-conic-gradient(var(--sq-dark) 0 25%, var(--sq-light) 0 50%) 0 0 / 50% 50%;
+  background: var(--surface-2);
+  color: var(--fg);
   cursor: pointer;
   transition:
-    box-shadow var(--dur) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
 }
 
-.theme-swatch:hover {
-  box-shadow: 0 0 0 2px var(--page-bg), 0 0 0 3px var(--page-fg);
+.icon-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 
-.theme-swatch[aria-checked='true'] {
-  box-shadow: 0 0 0 2px var(--page-bg), 0 0 0 4px var(--accent);
+.icon-button svg {
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
-.theme-swatch:active {
-  transform: scale(0.92);
+.icon-button:hover svg {
+  transform: rotate(45deg);
 }
 
-.theme-swatch:focus-visible {
-  outline: 2px solid var(--page-fg);
-  outline-offset: 5px;
+.settings {
+  position: fixed;
+  inset: 64px 20px auto auto;
+  width: min(380px, calc(100vw - 24px));
+  max-height: calc(100svh - 84px);
+  margin: 0;
+  padding: calc(var(--space) * 4);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: 0 18px 48px oklch(0 0 0 / 0.35);
+}
+
+.settings:popover-open {
+  display: grid;
+  gap: calc(var(--space) * 5);
+  animation: kb-enter var(--dur) var(--ease-out) both;
+}
+
+.settings section {
+  display: grid;
+  gap: calc(var(--space) * 2.5);
+}
+
+.settings-title {
+  font: 600 var(--t-xs) / 1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.settings-note {
+  color: var(--muted);
+  font-size: var(--t-xs);
+}
+
+/* Each theme option carries its own data-theme, so it previews that theme's board and accent. */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: calc(var(--space) * 2);
+}
+
+.theme-option,
+.piece-option {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--page-fg);
+  font-size: var(--t-xs);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.theme-option:hover,
+.piece-option:hover {
+  background: color-mix(in oklab, var(--page-fg) 7%, transparent);
+}
+
+.theme-option[aria-checked='true'],
+.piece-option[aria-checked='true'] {
+  border-color: var(--page-accent);
+  background: color-mix(in oklab, var(--page-accent) 12%, transparent);
+}
+
+.theme-preview {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.theme-board {
+  position: absolute;
+  inset: 6px 6px 14px 6px;
+  border-radius: 2px;
+  background: repeating-conic-gradient(var(--sq-dark) 0 25%, var(--sq-light) 0 50%) 0 0 / 50% 50%;
+}
+
+.theme-accent {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  left: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.piece-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: calc(var(--space) * 1.5);
+}
+
+.piece-option img {
+  width: 36px;
+  height: 36px;
+}
+
+.toggles {
+  display: grid;
+  gap: 2px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  font-size: var(--t-sm);
+  cursor: pointer;
+}
+
+/* A switch drawn from the native checkbox, so keyboard and screen readers get the real control. */
+.toggle input {
+  appearance: none;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border-radius: 10px;
+  background: var(--surface-hover);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease-out);
+}
+
+.toggle input::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--fg);
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.toggle input:checked {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.toggle input:checked::after {
+  background: var(--accent-fg);
+  transform: translateX(16px);
+}
+
+.segmented-wide {
+  display: flex;
+}
+
+.segmented-wide button {
+  flex: 1;
 }
 
 /* Home */
@@ -660,13 +939,18 @@ button {
 /* Review */
 
 .review {
-  --board: min(calc(100svh - 292px), calc(100vw - 526px));
+  --bar: 28px;
+  --board: min(calc(100svh - 292px), calc(100vw - 498px - var(--bar)));
   display: grid;
   grid-template-columns: auto minmax(320px, 400px);
   grid-template-rows: auto 1fr;
   justify-content: center;
   gap: calc(var(--space) * 4) calc(var(--space) * 8);
   padding: calc(var(--space) * 4) calc(var(--space) * 6) calc(var(--space) * 6);
+}
+
+.review-no-bar {
+  --bar: 0px;
 }
 
 .topbar {
@@ -686,25 +970,11 @@ button {
   color: var(--muted);
 }
 
-.depth {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 2);
-  color: var(--muted);
-  font-size: var(--t-sm);
-}
-
-.depth select {
-  min-height: 34px;
-  padding: 0 calc(var(--space) * 2);
-  font-size: var(--t-sm);
-}
-
 .stage {
   display: grid;
   align-content: start;
   gap: calc(var(--space) * 2);
-  width: calc(var(--board) + 28px);
+  width: calc(var(--board) + var(--bar));
 }
 
 .board-row {
@@ -894,7 +1164,7 @@ button {
   display: flex;
   align-items: center;
   gap: calc(var(--space) * 2.5);
-  padding-left: 28px;
+  padding-left: var(--bar);
   min-height: 34px;
 }
 
@@ -953,7 +1223,7 @@ button {
 .graph {
   position: relative;
   height: 76px;
-  margin-left: 28px;
+  margin-left: var(--bar);
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -1010,7 +1280,7 @@ button {
   flex-wrap: wrap;
   align-items: center;
   gap: calc(var(--space) * 1.5);
-  margin-left: 28px;
+  margin-left: var(--bar);
 }
 
 .turning-label {
@@ -1053,7 +1323,7 @@ button {
 }
 
 .progress {
-  margin-left: 28px;
+  margin-left: var(--bar);
   color: var(--muted);
   font-size: var(--t-sm);
 }
@@ -1574,7 +1844,7 @@ button {
 
   /* One column, ordered for stepping through on a phone: board, verdict, controls, then the rest. */
   .review {
-    --board: calc(100vw - 2 * var(--space) * 4 - 28px);
+    --board: calc(100vw - 2 * var(--space) * 4 - var(--bar));
     display: flex;
     flex-direction: column;
     gap: calc(var(--space) * 3);
@@ -1597,16 +1867,8 @@ button {
     flex-basis: 100%;
   }
 
-  .depth {
+  .topbar .icon-button {
     margin-left: auto;
-  }
-
-  .depth span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
   }
 
   .stage > .player:first-child {
@@ -1679,4 +1941,14 @@ button {
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* The Animations switch in Settings: same as the OS setting above. */
+html[data-motion='off'] *,
+html[data-motion='off'] *::before,
+html[data-motion='off'] *::after {
+  transition-duration: 0ms !important;
+  animation-duration: 0ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
 }

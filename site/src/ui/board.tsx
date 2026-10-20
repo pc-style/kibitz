@@ -18,9 +18,11 @@ interface Props {
   shapes: DrawShape[];
   /** Lets the user play one move (Retry); otherwise the board only displays. */
   movable?: Movable;
+  coordinates?: boolean;
+  animate?: boolean;
 }
 
-export function Board({ fen, orientation, lastMove, shapes, movable }: Props) {
+export function Board({ fen, orientation, lastMove, shapes, movable, coordinates = true, animate = true }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
   const onMove = useRef(movable?.onMove);
@@ -30,7 +32,7 @@ export function Board({ fen, orientation, lastMove, shapes, movable }: Props) {
     // Not viewOnly: chessground binds pointer events only at creation, and Retry needs them later.
     // With no movable color nothing can be moved, so it still behaves as a display.
     const cg = Chessground(el.current!, {
-      coordinates: true,
+      coordinates,
       // Piece slides run in JS, so the CSS reduced-motion rule can't reach them.
       animation: { enabled: !reducedMotion(), duration: 180 },
       premovable: { enabled: false },
@@ -41,6 +43,17 @@ export function Board({ fen, orientation, lastMove, shapes, movable }: Props) {
     api.current = cg;
     return () => cg.destroy();
   }, []);
+
+  // Coordinates are drawn when the board is built, so toggling them needs a full redraw.
+  useEffect(() => {
+    if (!api.current || api.current.state.coordinates === coordinates) return;
+    api.current.set({ coordinates });
+    api.current.redrawAll();
+  }, [coordinates]);
+
+  useEffect(() => {
+    api.current?.set({ animation: { enabled: animate && !reducedMotion() } });
+  }, [animate]);
 
   useEffect(() => {
     api.current?.set({

@@ -6,7 +6,8 @@ import { Board } from './ui/board';
 import { GRADE_INFO, GradeIcon, badgeSvg } from './ui/grades';
 import { Piece } from './ui/piece';
 import { Review } from './ui/review';
-import { ThemePicker, reducedMotion } from './ui/theme';
+import { SettingsButton } from './ui/settings';
+import { reducedMotion } from './ui/theme';
 
 const OPERA_GAME = `[Event "Paris"]
 [Site "Paris FRA"]
@@ -88,7 +89,7 @@ function Home() {
           <Piece role="knight" color="white" class="logo-mark" />
           <span class="wordmark">kibitz</span>
         </p>
-        <ThemePicker />
+        <SettingsButton />
       </div>
       <header class="home-head">
         <h1>

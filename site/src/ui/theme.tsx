@@ -1,31 +1,13 @@
-import { useState } from 'preact/hooks';
+import { reducedMotion, updateSettings, type Theme } from '../settings';
 
-export const THEMES = [
-  { id: 'classic', label: 'Classic' },
-  { id: 'walnut', label: 'Walnut' },
-  { id: 'midnight', label: 'Midnight' },
-  { id: 'paper', label: 'Paper' },
-] as const;
-
-export type Theme = (typeof THEMES)[number]['id'];
-
-export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-const currentTheme = () => (document.documentElement.dataset.theme as Theme | undefined) ?? 'classic';
+export { reducedMotion };
 
 let running: ViewTransition | null = null;
 
 /** Switches theme; the new theme spreads out from the swatch that was pressed. */
-function applyTheme(theme: Theme, from: { x: number; y: number }) {
+export function applyTheme(theme: Theme, from: { x: number; y: number }) {
   const root = document.documentElement;
-  const apply = () => {
-    root.dataset.theme = theme;
-    try {
-      localStorage.setItem('kibitz:theme', theme);
-    } catch {
-      // Private mode: the theme still applies for this visit.
-    }
-  };
+  const apply = () => updateSettings({ theme });
   if (!document.startViewTransition || reducedMotion()) return apply();
 
   // A second click mid-reveal finishes the first one instantly instead of overlapping it.
@@ -49,29 +31,4 @@ function applyTheme(theme: Theme, from: { x: number; y: number }) {
     running = null;
     root.classList.remove('theme-reveal');
   });
-}
-
-export function ThemePicker() {
-  const [theme, setTheme] = useState(currentTheme);
-  return (
-    <div class="themes" role="radiogroup" aria-label="Theme">
-      {THEMES.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          role="radio"
-          class="theme-swatch"
-          data-theme={t.id}
-          aria-checked={theme === t.id}
-          aria-label={`${t.label} theme`}
-          title={t.label}
-          onClick={(e) => {
-            const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            applyTheme(t.id, { x: box.left + box.width / 2, y: box.top + box.height / 2 });
-            setTheme(t.id);
-          }}
-        />
-      ))}
-    </div>
-  );
 }

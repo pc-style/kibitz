@@ -9,8 +9,10 @@ import { GRADES, PHASES, gameAccuracy, lineWin, playerStats, reviewGame, type Gr
 import { Board, type Movable } from './board';
 import { EvalGraph } from './graph';
 import { GRADE_INFO, GradeIcon, NOTABLE, badgeSvg } from './grades';
+import { useSettings } from '../settings';
 import { Piece } from './piece';
-import { ThemePicker, reducedMotion } from './theme';
+import { SettingsButton } from './settings';
+import { reducedMotion } from './theme';
 
 /** Grades where Retry is offered: the moves worth finding again. */
 const RETRY: ReadonlySet<Grade> = new Set(['inaccuracy', 'mistake', 'miss', 'blunder']);
@@ -27,12 +29,6 @@ function play(fen: string, uci: string) {
   const m = chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
   return { fen: chess.fen(), from: m.from as Key, to: m.to as Key, san: m.san };
 }
-
-const DEPTHS = [
-  { depth: 12, label: 'Quick' },
-  { depth: 16, label: 'Standard' },
-  { depth: 20, label: 'Deep' },
-];
 
 interface Openings {
   book: Set<string>;
@@ -75,7 +71,8 @@ export function Review({ pgn, orientation: initialOrientation }: { pgn: string; 
 
 function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation: 'w' | 'b' }) {
   const total = game.fens.length;
-  const [depth, setDepth] = useState(() => Number(localStorage.getItem('kibitz:depth')) || 16);
+  const settings = useSettings();
+  const depth = settings.depth;
   // Read a saved review synchronously so a revisit renders complete on the first frame.
   const [evals, setEvals] = useState<(PositionEval | undefined)[]>(() => readCache(cacheKey(game, depth)) ?? []);
   const [failure, setFailure] = useState<string>();
@@ -233,10 +230,10 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     const shapes: DrawShape[] = [];
     if (ply && move) {
       shapes.push(badge(move.grade, ply.to));
-      if (bestUci) shapes.push({ orig: bestUci.slice(0, 2) as Key, dest: bestUci.slice(2, 4) as Key, brush: 'best' });
+      if (bestUci && settings.arrows) shapes.push({ orig: bestUci.slice(0, 2) as Key, dest: bestUci.slice(2, 4) as Key, brush: 'best' });
     }
     return { fen: game.fens[index], lastMove: ply ? [ply.from, ply.to] : undefined, shapes };
-  }, [index, ply, move, retry, showBest, bestUci, lines]);
+  }, [index, ply, move, retry, showBest, bestUci, lines, settings.arrows]);
 
   const opening = useMemo(() => {
     if (!openings) return game.headers.Opening;
@@ -270,7 +267,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const score = scores[index];
 
   return (
-    <div class="review" ref={root}>
+    <div class={`review ${settings.evalBar ? '' : 'review-no-bar'}`} ref={root}>
       <header class="topbar">
         <a class="logo" href="#" aria-label="Kibitz home">
           <Piece role="knight" color="white" class="logo-mark" />
@@ -281,30 +278,13 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
           {h.Result && h.Result !== '*' ? ` · ${h.Result.replace('1/2-1/2', '½-½')}` : ''}
           {h.Date && !h.Date.includes('?') ? ` · ${h.Date.replaceAll('.', '-')}` : ''}
         </p>
-        <label class="depth">
-          <span>Engine depth</span>
-          <select
-            value={depth}
-            onChange={(e) => {
-              const d = Number((e.target as HTMLSelectElement).value);
-              localStorage.setItem('kibitz:depth', String(d));
-              setDepth(d);
-            }}
-          >
-            {DEPTHS.map((d) => (
-              <option value={d.depth}>
-                {d.label} · {d.depth}
-              </option>
-            ))}
-          </select>
-        </label>
-        <ThemePicker />
+        <SettingsButton />
       </header>
 
       <section class="stage">
         <PlayerStrip {...player(top)} color={top} />
         <div class="board-row">
-          <EvalBar score={score} orientation={orientation} />
+          {settings.evalBar ? <EvalBar score={score} orientation={orientation} /> : null}
           <div class="board">
             <Board
               fen={view.fen}
@@ -312,6 +292,8 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
               lastMove={view.lastMove}
               shapes={view.shapes}
               movable={view.movable}
+              coordinates={settings.coordinates}
+              animate={settings.motion}
             />
           </div>
         </div>
