@@ -1,6 +1,6 @@
 // Kibitz: puts a "Free review" button on finished chess.com games and opens them on the Kibitz site.
 
-const SITE = 'https://kibitz.vercel.app/';
+const SITE = 'https://kibitz-review.vercel.app/';
 
 // /game/live/123, /game/daily/123, /analysis/game/live/123, /live/game/123, /game/123
 const GAME_PATH = /^\/(?:analysis\/)?(?:game\/(live|daily)\/(\d+)|(live|daily)\/game\/(\d+)|game\/(\d+))(?:[/?#]|$)/;

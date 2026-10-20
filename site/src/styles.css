@@ -375,14 +375,25 @@ button {
   font-size: var(--t-sm);
 }
 
-.home-foot strong {
+.home-foot {
+  display: grid;
+  gap: calc(var(--space) * 2);
+}
+
+.home-foot strong,
+.home-foot a,
+.home-foot code {
   color: var(--fg);
+}
+
+.home-foot code {
+  font: 400 0.92em / 1 var(--font-mono);
 }
 
 /* Review */
 
 .review {
-  --board: min(calc(100svh - 252px), calc(100vw - 520px));
+  --board: min(calc(100svh - 252px), calc(100vw - 526px));
   display: grid;
   grid-template-columns: auto minmax(320px, 400px);
   grid-template-rows: auto 1fr;
@@ -425,7 +436,7 @@ button {
 .stage {
   display: grid;
   gap: calc(var(--space) * 2);
-  width: calc(var(--board) + 22px);
+  width: calc(var(--board) + 28px);
 }
 
 .board-row {
@@ -461,7 +472,7 @@ button {
 .evalbar {
   position: relative;
   flex: none;
-  width: 14px;
+  width: 20px;
   overflow: hidden;
   border-radius: 2px;
   background: oklch(0.12 0.01 165);
@@ -484,9 +495,9 @@ button {
   position: absolute;
   left: 0;
   right: 0;
-  font: 600 7px / 1 var(--font-mono);
+  font: 600 8px / 1 var(--font-mono);
   text-align: center;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.06em;
 }
 
 .evalbar-label-white {
@@ -513,7 +524,7 @@ button {
   display: flex;
   align-items: baseline;
   gap: calc(var(--space) * 2);
-  padding-left: 22px;
+  padding-left: 28px;
   min-height: 24px;
 }
 
@@ -552,7 +563,7 @@ button {
 .graph {
   position: relative;
   height: 76px;
-  margin-left: 22px;
+  margin-left: 28px;
   border-radius: 2px;
   background: oklch(0.12 0.01 165);
   cursor: pointer;
@@ -589,7 +600,7 @@ button {
 .progress {
   display: grid;
   gap: calc(var(--space) * 1.5);
-  margin-left: 22px;
+  margin-left: 28px;
   color: var(--muted);
   font-size: var(--t-sm);
 }
@@ -662,18 +673,10 @@ button {
   font-size: var(--t-sm);
 }
 
-.grades thead th {
-  padding-bottom: var(--space);
-  color: var(--muted);
-  font: 400 var(--t-xs) / 1 var(--font-sans);
-}
-
-.grades thead th:first-child,
 .grades td:first-child {
   text-align: left;
 }
 
-.grades thead th:last-child,
 .grades td:last-child {
   text-align: right;
 }
@@ -720,7 +723,7 @@ button {
   min-width: 2.1em;
   margin-right: calc(var(--space) * 1.5);
   color: var(--g);
-  font: 600 0.9em / 1 var(--font-mono);
+  font: 600 0.95em / 1 var(--font-mono), 'DejaVu Sans', sans-serif;
   letter-spacing: -0.06em;
 }
 
@@ -894,7 +897,7 @@ button {
   }
 
   .review {
-    --board: calc(100vw - 2 * var(--space) * 4 - 22px);
+    --board: calc(100vw - 2 * var(--space) * 4 - 28px);
     grid-template-columns: 1fr;
     padding: calc(var(--space) * 3) calc(var(--space) * 4) calc(var(--space) * 6);
   }

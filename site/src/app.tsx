@@ -141,9 +141,11 @@ function Home() {
 
       <footer class="home-foot">
         <p>
-          On chess.com? The Kibitz extension puts a <strong>Free review</strong> button on every finished game and opens it
-          here. Grades follow chess.com's categories; accuracy uses lichess's published formula.
+          On chess.com? The <a href="/kibitz-extension.zip">Kibitz extension</a> puts a <strong>Free review</strong> button on
+          every finished game and opens it here. Unzip it, open <code>chrome://extensions</code>, turn on Developer mode, and
+          choose Load unpacked.
         </p>
+        <p>Grades follow chess.com's categories; accuracy uses lichess's published formula.</p>
       </footer>
     </main>
   );

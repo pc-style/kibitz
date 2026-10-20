@@ -259,7 +259,7 @@ function EvalBar({ score, orientation }: { score?: Score; orientation: 'w' | 'b'
   return (
     <div class={`evalbar ${orientation === 'b' ? 'evalbar-flipped' : ''}`} aria-label={score ? `Evaluation ${score.label}` : 'Evaluation pending'}>
       <div class="evalbar-white" style={`--white:${white / 100}`} />
-      <span class={`evalbar-label ${white >= 50 ? 'evalbar-label-white' : 'evalbar-label-black'}`}>{score?.label ?? '…'}</span>
+      <span class={`evalbar-label ${white >= 50 ? 'evalbar-label-white' : 'evalbar-label-black'}`}>{score?.label.replace(/^[+-]/, '') ?? '…'}</span>
     </div>
   );
 }
@@ -289,12 +289,10 @@ function Summary(props: {
       </div>
       <table class="grades">
         <caption class="visually-hidden">Moves by grade. Select a count to jump to the next such move.</caption>
-        <thead>
+        <thead class="visually-hidden">
           <tr>
             <th scope="col">White</th>
-            <th scope="col">
-              <span class="visually-hidden">Grade</span>
-            </th>
+            <th scope="col">Grade</th>
             <th scope="col">Black</th>
           </tr>
         </thead>
