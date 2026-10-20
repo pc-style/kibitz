@@ -780,7 +780,7 @@ textarea {
   grid-template-columns: 80px minmax(0, 1fr);
 }
 
-.door-opponent {
+.door .cg-wrap.door-opponent {
   width: 80px;
   height: 80px;
   padding: 8px;
