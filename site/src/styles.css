@@ -362,6 +362,17 @@ button {
   color: inherit;
 }
 
+/* No double-tap zoom when tapping quickly; pinch zoom still works. Set on the controls themselves
+   because Safari resets touch-action inside scroll areas like the move list. */
+html,
+a,
+button,
+label,
+input,
+textarea {
+  touch-action: manipulation;
+}
+
 .button,
 .controls button {
   display: inline-flex;
@@ -439,6 +450,14 @@ button {
 .field textarea {
   font: 400 var(--t-sm) / 1.6 var(--font-mono);
   resize: vertical;
+}
+
+/* iOS Safari zooms the page into any field smaller than 16px when it gets focus. */
+@media (pointer: coarse) {
+  .field input,
+  .field textarea {
+    font-size: 16px;
+  }
 }
 
 .field input:hover,
