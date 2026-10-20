@@ -29,6 +29,8 @@ interface TaskBase {
   explain?: string;
   /** Shown after a wrong try. Optional. */
   hint?: string;
+  /** The move just played (UCI), highlighted on the board: a pawn's two-square jump before en passant, say. */
+  lastMove?: string;
 }
 
 /**

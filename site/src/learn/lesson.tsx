@@ -155,6 +155,8 @@ function DemoBoard({ demo }: { demo: Demo }) {
 
 // ---------------------------------------------------------------- collect and capture
 
+const squaresOf = (uci?: string) => (uci ? [uci.slice(0, 2) as Key, uci.slice(2, 4) as Key] : undefined);
+
 const blackPieces = (fen: string) => (fen.split(' ')[0].match(/[pnbrqk]/g) ?? []).length;
 
 function PracticeView({ lesson, step, task, onNext }: { lesson: Lesson; step: number; task: CollectTask | CaptureTask; onNext: (m: number) => void }) {
@@ -239,7 +241,7 @@ function MovesView({ lesson, step, task, onNext }: { lesson: Lesson; step: numbe
   const later = useLater();
   const [at, setAt] = useState(0);
   const [fen, setFen] = useState(task.fen);
-  const [lastMove, setLastMove] = useState<Key[]>();
+  const [lastMove, setLastMove] = useState(squaresOf(task.lastMove));
   const [mistakes, setMistakes] = useState(0);
   const [status, setStatus] = useState<'play' | 'wrong' | 'reply' | 'solved'>('play');
   const [feedback, setFeedback] = useState<string>();
@@ -469,7 +471,11 @@ function ChooseView({ lesson, step, task, onNext }: { lesson: Lesson; step: numb
   const shapes = useMemo(() => [...(task.dots ?? []).map(dotShape), ...(task.arrows ?? []).map((a) => arrowShape(a))], [task]);
 
   return (
-    <Frame lesson={lesson} step={step} board={<LessonBoard fen={task.fen} orientation={colorOf(task.fen)} shapes={shapes} />}>
+    <Frame
+      lesson={lesson}
+      step={step}
+      board={<LessonBoard fen={task.fen} orientation={colorOf(task.fen)} lastMove={squaresOf(task.lastMove)} shapes={shapes} />}
+    >
       <Coach tone={solved ? 'good' : wrong.length ? 'bad' : 'neutral'} lead={solved ? 'Right.' : task.prompt}>
         {solved && task.explain ? <p class="coach-detail">{task.explain}</p> : null}
         {!solved && wrong.length ? <p class="coach-detail">{task.hint ?? 'Not quite. Look again.'}</p> : null}

@@ -84,6 +84,7 @@ const enPassant: Lesson = {
       type: 'moves',
       prompt: 'The black pawn just moved two squares. Capture it en passant.',
       fen: '8/8/8/3pP2k/8/8/8/K7 w - d6 0 1',
+      lastMove: 'd7d5',
       steps: [{ accept: ['e5d6'] }],
       explain: 'Now your pawn has a clear road to the end of the board, and the black king is too far away.',
     },
@@ -91,6 +92,7 @@ const enPassant: Lesson = {
       type: 'moves',
       prompt: 'You are Black. The white pawn just jumped past yours. Take it en passant.',
       fen: '6k1/pp3ppp/8/8/2Pp4/8/PP3PPP/6K1 b - c3 0 1',
+      lastMove: 'c2c4',
       steps: [{ accept: ['d4c3'] }],
     },
     {

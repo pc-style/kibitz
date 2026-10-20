@@ -536,6 +536,15 @@ function checkChoose(where, task, key) {
 
 // --- Course ----------------------------------------------------------------------------------
 
+/** A highlighted last move must be the other side's: its start is empty and its piece now stands on the target. */
+function checkLastMove(where, task) {
+  const chess = new Chess(task.fen, { skipValidation: true });
+  const { from, to } = parseUci(task.lastMove);
+  const piece = chess.get(to);
+  if (chess.get(from)) fail(where, `last move ${task.lastMove} starts on an occupied square`);
+  if (!piece || piece.color === chess.turn()) fail(where, `last move ${task.lastMove} does not end on a piece of the side that just moved`);
+}
+
 async function checkLesson(unit, lesson, seenIds) {
   const where = lesson.id;
   if (seenIds.has(lesson.id)) fail(where, 'duplicate lesson id');
@@ -561,6 +570,7 @@ async function checkLesson(unit, lesson, seenIds) {
       fail(at, 'no FEN');
       continue;
     }
+    if (task.lastMove !== undefined) checkLastMove(at, task);
     if (task.type === 'collect' || task.type === 'capture') checkPractice(at, task);
     else if (task.type === 'moves') jobs.push(checkMoves(at, task, key, !(key in ENGINE_EXEMPT)));
     else if (task.type === 'mate') jobs.push(checkMate(at, task));
