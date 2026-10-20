@@ -133,11 +133,16 @@ export function summarizeGame(
   names: Record<Color, string>,
 ): string {
   const gap = accuracy.w - accuracy.b;
-  const parts = [Math.abs(gap) < 3 ? 'Both sides played at a similar level.' : `${names[gap > 0 ? 'w' : 'b']} played the more accurate game.`];
+  const better: Color | null = Math.abs(gap) < 3 ? null : gap > 0 ? 'w' : 'b';
+  const parts = [better ? `${names[better]} played the more accurate game.` : 'Both sides played at a similar level.'];
 
   const brilliant = moves.findIndex((m) => m?.grade === 'brilliant');
   if (brilliant >= 0) {
-    parts.push(`${names[game.plies[brilliant].color]} found a brilliant ${moveName(game, brilliant)}.`);
+    const finder = game.plies[brilliant].color;
+    const found = `found a brilliant ${moveName(game, brilliant)}.`;
+    // Same player: one sentence, so the name isn't repeated.
+    if (finder === better) parts[0] = `${names[finder]} played the more accurate game and ${found}`;
+    else parts.push(`${names[finder]} ${found}`);
   } else {
     let worst = -1;
     moves.forEach((m, i) => {
