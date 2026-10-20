@@ -42,6 +42,7 @@ class Engine {
   private worker = new Worker(ENGINE_URL);
   private onLine: ((line: string) => void) | null = null;
   private onFail: ((err: Error) => void) | null = null;
+  private failure: Error | null = null;
 
   constructor() {
     this.worker.onmessage = (e) => this.onLine?.(String(e.data));
@@ -49,6 +50,7 @@ class Engine {
   }
 
   private request(commands: string[], handle: (line: string, done: () => void) => void, timeout = 30000): Promise<void> {
+    if (this.failure) return Promise.reject(this.failure);
     return new Promise((resolve, reject) => {
       const cleanup = () => {
         clearTimeout(timer);
@@ -60,12 +62,20 @@ class Engine {
       };
       const fail = (error: Error) => {
         cleanup();
+        // After a timeout we cannot match a late bestmove to its search. Retire
+        // this worker; callers restart it explicitly instead of reusing stale output.
+        this.failure = error;
+        this.worker.terminate();
         reject(error);
       };
       const timer = setTimeout(() => fail(new Error('The engine took too long to answer.')), timeout);
       this.onLine = (line) => handle(line, done);
       this.onFail = fail;
-      for (const c of commands) this.worker.postMessage(c);
+      try {
+        for (const c of commands) this.worker.postMessage(c);
+      } catch (error) {
+        fail(error instanceof Error ? error : new Error(String(error)));
+      }
     });
   }
 
@@ -103,12 +113,13 @@ class Engine {
 
   /** Ends the current search early; it still resolves with what it found. */
   stop() {
-    this.worker.postMessage('stop');
+    if (!this.failure) this.worker.postMessage('stop');
   }
 
   terminate() {
+    this.failure ??= new Error('stopped');
     this.worker.terminate();
-    this.onFail?.(new Error('stopped'));
+    this.onFail?.(this.failure);
   }
 }
 

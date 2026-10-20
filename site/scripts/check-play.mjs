@@ -90,7 +90,7 @@ try {
       const move = botMove(position, result, bot);
       assert(position.moves({ verbose: true }).some((m) => m.lan === move), `${bot.name} must choose a legal reply`);
     }
-    console.log(`${bot.name}: legal opening, middlegame, and promotion replies.`);
+    console.log(`${bot.name}: legal opening, developed position, and promotion replies.`);
   }
   const oldSearch = engine.analyse(opening.fen(), 40, undefined, { moveTime: 3000 });
   const latest = engine.analyse(c.fen(), 10, undefined, { skill: 2, moveTime: 500, moves: c.history({ verbose: true }).map((m) => m.lan) });
@@ -113,3 +113,33 @@ const replacement = new LiveEngine();
 try { assert((await replacement.analyse(c.fen(), 8, undefined, { moveTime: 500 }))?.best); }
 finally { replacement.terminate(); }
 console.log('LiveEngine cancellation, history, hint strength, failure and restart passed.');
+
+// A timeout must retire the worker. Otherwise its late bestmove can be mistaken
+// for the next position's answer after the rejected search leaves the queue.
+const realTimer = globalThis.setTimeout;
+let silentWorker;
+class SilentWorker {
+  onmessage = null;
+  terminated = false;
+  constructor() { silentWorker = this; }
+  postMessage(command) {
+    if (command === 'uci') queueMicrotask(() => this.onmessage?.({ data: 'uciok' }));
+    if (command === 'isready') queueMicrotask(() => this.onmessage?.({ data: 'readyok' }));
+  }
+  terminate() { this.terminated = true; }
+}
+globalThis.Worker = SilentWorker;
+globalThis.setTimeout = (fn, ms, ...args) => realTimer(fn, ms >= 20000 ? 25 : ms, ...args);
+const silent = new LiveEngine();
+try {
+  await assert.rejects(silent.analyse(opening.fen(), 20, undefined, { moveTime: 100 }), /too long/);
+  assert(silentWorker.terminated, 'retire a timed-out worker');
+  const next = silent.analyse(c.fen(), 20, undefined, { moveTime: 100 });
+  silentWorker.onmessage?.({ data: 'bestmove e2e4' });
+  await assert.rejects(next, /too long/, 'a late answer cannot be reused for another position');
+} finally {
+  silent.terminate();
+  globalThis.setTimeout = realTimer;
+  globalThis.Worker = NodeEngineWorker;
+}
+console.log('Timeout retires the worker and rejects later reuse.');
