@@ -9,6 +9,7 @@ import { useSettings } from '../settings';
 import { boardHash, reviewHash } from '../sources';
 import { Board, type Movable } from './board';
 import { TopNav } from './nav';
+import { isPromotion, PromotionPicker } from './promotion';
 import { EvalBar, NavIcon } from './review';
 import './analysis.css';
 
@@ -186,7 +187,14 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
   const [line, setLine] = useState<Analysis>({ start: opened.fen, moves: [], index: 0 });
   const [notice, setNotice] = useState(opened.error);
   const [orientation, setOrientation] = useState<'w' | 'b'>('w');
-  const [engineOn, setEngineOn] = useState(() => localStorage.getItem(ENGINE_KEY) !== 'off');
+  const [engineOn, setEngineOn] = useState(() => {
+    try {
+      return localStorage.getItem(ENGINE_KEY) !== 'off';
+    } catch {
+      return true; // Storage blocked: the switch just isn't remembered.
+    }
+  });
+  const [promoting, setPromoting] = useState<{ from: Key; to: Key } | null>(null);
   const [live, setLive] = useState<Live | null>(null);
   const [failure, setFailure] = useState<string>();
   const [draft, setDraft] = useState<string | null>(null);
@@ -216,15 +224,19 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
     });
   const flip = () => setOrientation((o) => (o === 'w' ? 'b' : 'w'));
 
-  // Promotions are always to a queen; the board has no piece picker.
-  const movable = useMemo<Movable>(
-    () => ({
-      color: position.turn === 'w' ? 'white' : 'black',
-      dests: position.dests,
-      onMove: (from, to) => change((a) => playMove(a, { from, to, promotion: 'q' })),
-    }),
-    [position],
+  // A pawn reaching the last rank waits on the picker; meanwhile the board shows it as a queen.
+  const movable = useMemo<Movable | undefined>(
+    () =>
+      promoting
+        ? undefined
+        : {
+            color: position.turn === 'w' ? 'white' : 'black',
+            dests: position.dests,
+            onMove: (from, to) => (isPromotion(fen, from, to) ? setPromoting({ from, to }) : change((a) => playMove(a, { from, to }))),
+          },
+    [position, promoting],
   );
+  const shownFen = useMemo(() => (promoting ? new Chess(fen).move({ ...promoting, promotion: 'q' }).after : fen), [fen, promoting]);
 
   const nav = useRef(line);
   nav.current = line;
@@ -367,7 +379,7 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
           {settings.evalBar ? <EvalBar score={score} orientation={orientation} /> : null}
           <div class="board">
             <Board
-              fen={fen}
+              fen={shownFen}
               orientation={orientation === 'w' ? 'white' : 'black'}
               lastMove={last ? [last.from, last.to] : undefined}
               shapes={shapes}
@@ -375,6 +387,18 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
               coordinates={settings.coordinates}
               animate={settings.motion}
             />
+            {promoting ? (
+              <PromotionPicker
+                square={promoting.to}
+                color={position.turn === 'w' ? 'white' : 'black'}
+                orientation={orientation === 'w' ? 'white' : 'black'}
+                onPick={(piece) => {
+                  change((a) => playMove(a, { ...promoting, promotion: piece }));
+                  setPromoting(null);
+                }}
+                onCancel={() => setPromoting(null)}
+              />
+            ) : null}
           </div>
         </div>
         <p class="progress">

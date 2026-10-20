@@ -196,14 +196,14 @@ const stalemate: Lesson = {
       prompt: 'Find the checkmate. Most queen moves here are stalemate.',
       fen: '7k/5K2/8/8/8/8/8/1Q6 w - - 0 1',
       steps: [{ accept: 'mate' }],
-      hint: "That was stalemate: Black couldn't move and wasn't in check. Give a check he can't escape.",
+      hint: "Give a check he can't escape.",
     },
     {
       type: 'moves',
       prompt: 'Checkmate with the rook. One rook move would be stalemate.',
       fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1',
       steps: [{ accept: 'mate' }],
-      hint: 'Trapping the king without check is stalemate. Check him along the back row.',
+      hint: 'Check him along the back row.',
     },
   ],
 };

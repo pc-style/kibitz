@@ -237,6 +237,16 @@ function findGoalMove(fen: string, goal: 'check' | 'mate'): string | undefined {
   return undefined;
 }
 
+/** What a wrong move did, in words, plus the task's hint when it has one. */
+function wrongMoveNote(after: Chess, goal: MovesTask['steps'][number]['accept'], hint?: string): string {
+  const tip = hint ? ` ${hint}` : '';
+  if (goal === 'check') return `That move doesn't attack the king.${tip}`;
+  if (goal !== 'mate') return hint ?? 'Not that one. Try again.';
+  if (after.isStalemate()) return `That's stalemate: the king can't move but isn't in check, so it's a draw.${tip}`;
+  if (after.inCheck()) return `That's check, but the king can still get out.${tip}`;
+  return `That isn't check, so it can't be checkmate.${tip}`;
+}
+
 function MovesView({ lesson, step, task, onNext }: { lesson: Lesson; step: number; task: MovesTask; onNext: (m: number) => void }) {
   const later = useLater();
   const [at, setAt] = useState(0);
@@ -267,13 +277,7 @@ function MovesView({ lesson, step, task, onNext }: { lesson: Lesson; step: numbe
         if (!ok) {
           setMistakes((n) => n + 1);
           setStatus('wrong');
-          setFeedback(
-            goal === 'mate' && chess.inCheck()
-              ? "That's check, but the king can still get out."
-              : goal === 'check'
-                ? "That move doesn't attack the king."
-                : (task.hint ?? 'Not that one. Try again.'),
-          );
+          setFeedback(wrongMoveNote(chess, goal, task.hint));
           later(() => {
             setFen(before.fen);
             setLastMove(before.lastMove);
@@ -353,15 +357,27 @@ function MateView({ lesson, step, task, onNext }: { lesson: Lesson; step: number
   const [status, setStatus] = useState<'play' | 'thinking' | 'solved' | 'failed'>('play');
   const [reason, setReason] = useState<string>();
   const learner = colorOf(task.fen);
+  // Bumped by Start over (and unmount), so a reply still on its way from the last attempt is dropped.
+  const attempt = useRef(0);
 
   useEffect(() => {
     engine.current = new LiveEngine(1);
-    return () => engine.current?.terminate();
+    return () => {
+      attempt.current++;
+      engine.current?.terminate();
+    };
   }, []);
 
   const fail = (why: string) => {
     setStatus('failed');
     setReason(why);
+  };
+  // A failed engine is replaced, so Start over gets a working one.
+  const engineFailed = (id: number) => {
+    if (id !== attempt.current) return;
+    engine.current?.terminate();
+    engine.current = new LiveEngine(1);
+    fail("The computer stopped answering. Start over to try again.");
   };
 
   const movable = useMemo<Movable | undefined>(() => {
@@ -382,32 +398,36 @@ function MateView({ lesson, step, task, onNext }: { lesson: Lesson; step: number
         if (chess.isStalemate()) return fail("Stalemate: the king can't move but isn't in check, so it's a draw.");
         if (count >= task.limit) return fail(`That's ${count} moves without mate.`);
         setStatus('thinking');
+        const id = attempt.current;
         engine.current
           ?.analyse(chess.fen(), 10)
           .then((r) => {
-            if (!r?.best) return;
+            if (id !== attempt.current) return;
+            if (!r?.best) return engineFailed(id);
             const reply = playUci(chess, r.best);
             later(() => {
-              if (!reply) return;
+              if (id !== attempt.current || !reply) return;
               setFen(chess.fen());
               setLastMove([reply.from as Key, reply.to as Key]);
               if (chess.isInsufficientMaterial()) return fail('The king took your last attacker, so mate is no longer possible.');
               setStatus('play');
             }, 250);
           })
-          .catch(() => {});
+          .catch(() => engineFailed(id));
       },
     };
   }, [fen, status, moves]);
 
   const askHint = () => {
+    const id = attempt.current;
     setHints((n) => n + 1);
     engine.current
       ?.analyse(fen, 14)
-      .then((r) => r?.best && setHint(r.best))
-      .catch(() => {});
+      .then((r) => id === attempt.current && r?.best && setHint(r.best))
+      .catch(() => engineFailed(id));
   };
   const reset = () => {
+    attempt.current++;
     engine.current?.stop();
     setFen(task.fen);
     setLastMove(undefined);
@@ -432,8 +452,7 @@ function MateView({ lesson, step, task, onNext }: { lesson: Lesson; step: number
       >
         {solved ? (
           <p class="coach-detail">
-            Mate in {moves}
-            {moves <= task.par ? ', as fast as it goes.' : `. It can be done in ${task.par}.`}
+            Mate in {moves}.{moves <= task.par ? ' Nice and quick.' : ` Try it in ${task.par} or fewer next time.`}
             {task.explain ? ` ${task.explain}` : ''}
           </p>
         ) : status === 'failed' ? (

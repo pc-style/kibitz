@@ -25,7 +25,7 @@ export function destsOf(chess: Chess): Map<Key, Key[]> {
   return dests;
 }
 
-/** Plays a board drag on chess, promoting to a queen. Null if illegal. */
+/** Plays a board drag on chess, promoting to a queen (lessons never ask for another piece). Null if illegal. */
 export function play(chess: Chess, orig: string, dest: string): Move | null {
   try {
     return chess.move({ from: orig, to: dest, promotion: 'q' });

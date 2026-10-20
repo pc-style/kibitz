@@ -42,7 +42,15 @@ export function Coach({ tone = 'neutral', lead, children }: { tone?: Tone; lead:
   );
 }
 
-export function LessonBoard(props: { fen: string; orientation?: 'white' | 'black'; lastMove?: Key[]; shapes: DrawShape[]; movable?: Movable }) {
+export function LessonBoard(props: {
+  fen: string;
+  orientation?: 'white' | 'black';
+  lastMove?: Key[];
+  shapes: DrawShape[];
+  movable?: Movable;
+  /** Drawn over the board, e.g. the promotion picker. */
+  overlay?: ComponentChildren;
+}) {
   const settings = useSettings();
   return (
     <div class="board lesson-board-inner">
@@ -55,6 +63,7 @@ export function LessonBoard(props: { fen: string; orientation?: 'white' | 'black
         coordinates={settings.coordinates}
         animate={settings.motion}
       />
+      {props.overlay}
     </div>
   );
 }

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { LiveEngine, type Line, type SearchResult } from '../engine';
 import { reviewHash } from '../sources';
 import type { Movable } from '../ui/board';
-import { arrowShape, destsOf, play, playUci, uciOf } from './play';
+import { isPromotion, PromotionPicker } from '../ui/promotion';
+import { arrowShape, destsOf, playUci, uciOf } from './play';
 import { saveStars } from './progress';
 import { Coach, LessonBoard, Shell, useLater } from './ui';
 
@@ -55,10 +56,17 @@ export function BotGame() {
   const [thinking, setThinking] = useState(false);
   const [hint, setHint] = useState<string>();
   const [resigned, setResigned] = useState(false);
+  const [promoting, setPromoting] = useState<{ from: Key; to: Key } | null>(null);
+  const [engineFailed, setEngineFailed] = useState(false);
+  // Bumped by a new game, a resignation or a take-back, so a bot reply still on its way is dropped.
+  const turn = useRef(0);
 
   useEffect(() => {
     engine.current = new LiveEngine(4);
-    return () => engine.current?.terminate();
+    return () => {
+      turn.current++;
+      engine.current?.terminate();
+    };
   }, []);
 
   const chess = game.current;
@@ -80,16 +88,19 @@ export function BotGame() {
   const botTurn = () => {
     const c = game.current;
     if (c.isGameOver()) return;
+    const id = ++turn.current;
     setThinking(true);
+    setEngineFailed(false);
     const started = Date.now();
     engine.current
       ?.analyse(c.fen(), 8)
       .then((r) => {
-        if (!r) return;
+        if (!r || id !== turn.current) return;
         const uci = gentleMove(c, r);
         // A short pause so the reply doesn't land the instant you let go of your piece.
         later(
           () => {
+            if (id !== turn.current) return;
             if (uci) playUci(c, uci);
             setThinking(false);
             sync();
@@ -97,30 +108,61 @@ export function BotGame() {
           Math.max(0, 600 - (Date.now() - started)),
         );
       })
-      .catch(() => setThinking(false));
+      .catch(() => {
+        if (id !== turn.current) return;
+        setThinking(false);
+        setEngineFailed(true);
+      });
+  };
+
+  /** Drops any reply in flight. */
+  const cancelBot = () => {
+    turn.current++;
+    engine.current?.stop();
+    setThinking(false);
+  };
+
+  // A failed engine is replaced, then the bot gets its turn back.
+  const retry = () => {
+    engine.current?.terminate();
+    engine.current = new LiveEngine(4);
+    botTurn();
   };
 
   const start = (s: Side) => {
+    cancelBot();
     game.current = new Chess();
     setSide(s);
     setResigned(false);
+    setPromoting(null);
+    setEngineFailed(false);
     sync();
     if (s === 'black') botTurn();
   };
 
-  const myTurn = !!side && !over && !thinking && chess.turn() === side[0];
+  const resign = () => {
+    cancelBot();
+    setPromoting(null);
+    setResigned(true);
+  };
+
+  const playMine = (from: Key, to: Key, promotion?: string) => {
+    if (!playUci(game.current, from + to + (promotion ?? 'q'))) return;
+    sync();
+    botTurn();
+  };
+
+  const myTurn = !!side && !over && !thinking && !engineFailed && chess.turn() === side[0];
   const movable = useMemo<Movable | undefined>(() => {
-    if (!myTurn || !side) return undefined;
+    if (!myTurn || !side || promoting) return undefined;
     return {
       color: side,
       dests: destsOf(game.current),
-      onMove: (orig, dest) => {
-        if (!play(game.current, orig, dest)) return;
-        sync();
-        botTurn();
-      },
+      onMove: (orig, dest) => (isPromotion(fen, orig, dest) ? setPromoting({ from: orig, to: dest }) : playMine(orig, dest)),
     };
-  }, [fen, myTurn]);
+  }, [fen, myTurn, promoting]);
+  // While the picker is open the board shows the pawn already promoted to a queen.
+  const shownFen = useMemo(() => (promoting ? new Chess(fen).move({ ...promoting, promotion: 'q' }).after : fen), [fen, promoting]);
 
   const askHint = () => {
     engine.current
@@ -130,7 +172,7 @@ export function BotGame() {
   };
   const takeBack = () => {
     if (!side) return;
-    engine.current?.stop();
+    cancelBot();
     chess.undo();
     if (chess.turn() !== side[0]) chess.undo();
     sync();
@@ -139,7 +181,29 @@ export function BotGame() {
 
   const shapes = useMemo(() => (hint && myTurn ? [arrowShape(hint)] : []), [hint, myTurn]);
   const history = chess.history();
-  const board = <LessonBoard fen={fen} orientation={side ?? 'white'} lastMove={lastMove} shapes={shapes} movable={movable} />;
+  const board = (
+    <LessonBoard
+      fen={shownFen}
+      orientation={side ?? 'white'}
+      lastMove={lastMove}
+      shapes={shapes}
+      movable={movable}
+      overlay={
+        promoting && side ? (
+          <PromotionPicker
+            square={promoting.to}
+            color={side}
+            orientation={side}
+            onPick={(piece) => {
+              setPromoting(null);
+              playMine(promoting.from, promoting.to, piece);
+            }}
+            onCancel={() => setPromoting(null)}
+          />
+        ) : null
+      }
+    />
+  );
 
   if (!side) {
     return (
@@ -165,6 +229,10 @@ export function BotGame() {
       {end ? (
         <Coach tone={end.stars === 3 ? 'good' : end.stars === 1 ? 'bad' : 'neutral'} lead={end.lead}>
           <p class="coach-detail">{end.detail}</p>
+        </Coach>
+      ) : engineFailed ? (
+        <Coach tone="bad" lead="The bot didn't answer.">
+          <p class="coach-detail">Stockfish stopped or couldn't load in this browser. Try again, or reload the page.</p>
         </Coach>
       ) : (
         <Coach lead={thinking ? 'The bot is thinking…' : chess.inCheck() ? 'Check. Get your king to safety.' : 'Your move.'}>
@@ -198,13 +266,18 @@ export function BotGame() {
           </>
         ) : (
           <>
+            {engineFailed ? (
+              <button class="button button-primary" type="button" onClick={retry}>
+                Try again
+              </button>
+            ) : null}
             <button class="button" type="button" onClick={askHint} disabled={!myTurn}>
               Hint
             </button>
             <button class="button" type="button" onClick={takeBack} disabled={thinking || history.length < 2}>
               Take back
             </button>
-            <button class="button" type="button" onClick={() => setResigned(true)} disabled={!history.length}>
+            <button class="button" type="button" onClick={resign} disabled={!history.length}>
               Resign
             </button>
           </>

@@ -2141,3 +2141,44 @@ html[data-motion='off'] *::after {
     gap: calc(var(--space) * 2);
   }
 }
+
+/* Promotion picker: a column of pieces over the promotion file. */
+.board {
+  position: relative;
+}
+
+.promotion {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: rgb(0 0 0 / 0.35);
+  animation: kb-fade var(--dur) var(--ease-out) both;
+}
+
+.promotion-col {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  width: 12.5%;
+}
+
+.promotion-choice {
+  aspect-ratio: 1;
+  padding: 6%;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.promotion-choice:hover,
+.promotion-choice:focus-visible {
+  background: var(--accent);
+}
+
+.promotion-choice .piece-icon {
+  width: 100%;
+  height: 100%;
+}

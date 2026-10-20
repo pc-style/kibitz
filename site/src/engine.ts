@@ -140,6 +140,8 @@ export class LiveEngine {
 
   constructor(multipv = 1) {
     this.ready = this.engine.init(multipv);
+    // A failed start surfaces from analyse(); don't also report it as unhandled.
+    this.ready.catch(() => {});
   }
 
   /** Searches fen to depth, reporting each deeper result. Resolves null if a later call or stop() replaced it. */
