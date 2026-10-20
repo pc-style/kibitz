@@ -1,4 +1,3 @@
-import type { Key } from '@lichess-org/chessground/types';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fetchGames, reviewHash, type GameSummary, type Site } from './sources';
 import { parseGame } from './game';
@@ -9,6 +8,7 @@ import { GRADE_INFO, GradeIcon, badgeSvg } from './ui/grades';
 import { CourseMap } from './learn/map';
 import { LessonPage } from './learn/lesson';
 import { LESSONS } from './learn/course';
+import { dotShape } from './learn/play';
 import { useStars } from './learn/progress';
 import { AnalysisBoard } from './ui/analysis';
 import { TopNav } from './ui/nav';
@@ -86,10 +86,7 @@ function Home() {
   const stars = useStars();
   const done = LESSONS.filter((l) => stars[l.id]).length;
   const next = LESSONS.find((l) => !stars[l.id]);
-  const knightDots = useMemo(
-    () => ['c3', 'e3', 'b4', 'f4', 'b6', 'f6', 'c7', 'e7'].map((sq) => ({ orig: sq as Key, brush: 'green' })),
-    [],
-  );
+  const knightDots = useMemo(() => ['c2', 'e2', 'b3', 'f3', 'b5', 'f5', 'c6', 'e6'].map(dotShape), []);
   const opera = useOpera();
 
   return (
@@ -107,7 +104,7 @@ function Home() {
 
       <a class="door" href="#/learn">
         <div class="door-board">
-          <Board fen="8/8/8/8/3N4/8/8/8 w - - 0 1" orientation="white" shapes={knightDots} />
+          <Board fen="8/8/8/8/3N4/8/8/8 w - - 0 1" orientation="white" shapes={knightDots} coordinates={false} />
         </div>
         <div class="door-body">
           <h2>Learn</h2>
@@ -128,7 +125,7 @@ function Home() {
 
       <a class="door" href="#/analysis">
         <div class="door-board">
-          <Board fen={opera.ply.fenAfter} orientation="white" lastMove={[opera.ply.from, opera.ply.to]} shapes={opera.shapes} />
+          <Board fen={opera.ply.fenAfter} orientation="white" lastMove={[opera.ply.from, opera.ply.to]} shapes={opera.shapes} coordinates={false} />
         </div>
         <div class="door-body">
           <h2>Analysis</h2>

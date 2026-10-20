@@ -1,0 +1,377 @@
+/* Learn: the course map, lessons and the practice game. Tokens and themes come from styles.css. */
+
+/* Course map */
+
+.learn {
+  display: grid;
+  gap: calc(var(--space) * 10);
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: calc(var(--space) * 10) calc(var(--space) * 8) calc(var(--space) * 14);
+}
+
+.learn-head {
+  display: grid;
+  justify-items: start;
+  gap: calc(var(--space) * 4);
+}
+
+.learn-head h1 {
+  font: 700 var(--t-xl) / 1.04 var(--font-sans);
+  letter-spacing: -0.03em;
+}
+
+.learn-head .home-lede {
+  max-width: 52ch;
+}
+
+.learn-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 4);
+}
+
+.unit {
+  display: grid;
+  gap: calc(var(--space) * 4);
+}
+
+.unit h2 {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  font: 600 var(--t-md) / 1.2 var(--font-sans);
+}
+
+.unit-n {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font: 600 var(--t-xs) / 1 var(--font-mono);
+}
+
+.lesson-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: calc(var(--space) * 3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lesson-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  height: 100%;
+  padding: calc(var(--space) * 3) calc(var(--space) * 4) calc(var(--space) * 3) calc(var(--space) * 3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
+}
+
+.lesson-card:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.lesson-card-next {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.lesson-card-icon.piece-icon {
+  width: 44px;
+  height: 44px;
+  padding: 5px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.lesson-card-next .lesson-card-icon.piece-icon {
+  background: var(--accent);
+}
+
+.lesson-card-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lesson-card-text span {
+  color: var(--muted);
+  font-size: var(--t-sm);
+  line-height: 1.35;
+}
+
+.lesson-card-tag {
+  padding: 3px 7px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: 600 var(--t-xs) / 1 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Stars: earned ones pop in one after another. */
+
+.stars {
+  display: inline-flex;
+  gap: 2px;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.stars-small {
+  font-size: 1rem;
+}
+
+.star {
+  color: var(--border-strong);
+}
+
+.star-on {
+  color: oklch(0.83 0.16 85);
+  animation: kb-pop var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--i) * 140ms);
+}
+
+.stars-small .star-on {
+  animation: none;
+}
+
+/* A lesson: header row, board, coach panel. */
+
+.lesson {
+  --board: min(calc(100svh - 190px), calc(100vw - 500px), 720px);
+  display: grid;
+  grid-template-columns: var(--board) minmax(300px, 380px);
+  grid-template-areas:
+    'top top'
+    'head head'
+    'board panel';
+  justify-content: center;
+  align-items: start;
+  gap: calc(var(--space) * 4) calc(var(--space) * 8);
+  padding: calc(var(--space) * 4) calc(var(--space) * 6) calc(var(--space) * 8);
+}
+
+.lesson > .topbar {
+  grid-area: top;
+}
+
+.lesson-head {
+  grid-area: head;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2) calc(var(--space) * 5);
+}
+
+.lesson-back {
+  color: var(--muted);
+  font-size: var(--t-sm);
+  text-decoration: none;
+}
+
+.lesson-back:hover {
+  color: var(--fg);
+}
+
+.lesson-title {
+  font: 600 var(--t-lg) / 1.2 var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+.lesson-pips {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.lesson-pips li {
+  width: 22px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  transition: background-color var(--dur) var(--ease-out);
+}
+
+.lesson-pips .pip-done {
+  background: var(--accent);
+}
+
+.lesson-pips .pip-now {
+  background: color-mix(in oklab, var(--accent) 50%, var(--surface-2));
+}
+
+.lesson-board {
+  grid-area: board;
+}
+
+.lesson-panel {
+  grid-area: panel;
+  display: grid;
+  align-content: start;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 3);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.lesson-coach {
+  min-height: 0;
+}
+
+.lesson-coach .coach-detail + .coach-detail {
+  margin-top: calc(var(--space) * 1);
+}
+
+.lesson-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2) calc(var(--space) * 3);
+}
+
+.lesson-actions:empty {
+  display: none;
+}
+
+.lesson-done {
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 6) calc(var(--space) * 4);
+  text-align: center;
+}
+
+.lesson-done h2 {
+  font: 600 var(--t-lg) / 1.2 var(--font-sans);
+}
+
+.lesson-missing {
+  grid-template-columns: minmax(0, 640px);
+  grid-template-areas: 'top' 'board';
+}
+
+/* Multiple-choice answers */
+
+.choices {
+  display: grid;
+  gap: calc(var(--space) * 2);
+}
+
+.choice {
+  min-height: 44px;
+  padding: calc(var(--space) * 2.5) calc(var(--space) * 4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
+}
+
+.choice:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.choice:disabled {
+  cursor: default;
+}
+
+.choice-right {
+  border-color: var(--g-best);
+  background: color-mix(in oklab, var(--g-best) 22%, var(--surface-2));
+}
+
+.choice-wrong {
+  border-color: transparent;
+  background: color-mix(in oklab, var(--g-mistake) 14%, var(--surface-2));
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* Practice game move list */
+
+.bot-moves {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 2px calc(var(--space) * 3);
+  max-height: 180px;
+  margin: 0;
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
+  overflow-y: auto;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font: 400 var(--t-sm) / 1.6 var(--font-mono);
+  list-style: none;
+}
+
+.bot-move-n {
+  color: var(--muted);
+}
+
+/* Board marks: stars to collect and dots for where a piece can go. */
+
+.cg-wrap .kb-star {
+  fill: oklch(0.85 0.16 85);
+  stroke: oklch(0.45 0.1 70);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.cg-wrap .kb-dot {
+  fill: rgb(0 0 0 / 0.3);
+}
+
+@media (max-width: 900px) {
+  .learn {
+    gap: calc(var(--space) * 8);
+    padding: calc(var(--space) * 6) calc(var(--space) * 4) calc(var(--space) * 10);
+  }
+
+  /* Phones: the coach (what to do) sits above the board. */
+  .lesson {
+    --board: calc(100vw - 2 * var(--space) * 4);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'top' 'head' 'panel' 'board';
+    gap: calc(var(--space) * 3);
+    padding: calc(var(--space) * 3) calc(var(--space) * 4) calc(var(--space) * 8);
+  }
+
+  /* The review's phone layout reorders .coach; lessons keep their own order. */
+  .lesson .lesson-panel > * {
+    order: 0;
+  }
+
+  .lesson-title {
+    font-size: var(--t-md);
+  }
+
+  .lesson-pips li {
+    width: 14px;
+  }
+
+  .bot-moves {
+    max-height: 96px;
+  }
+}
