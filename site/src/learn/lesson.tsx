@@ -474,7 +474,7 @@ function MateView({ lesson, step, task, onNext }: { lesson: Lesson; step: number
             Hint
           </button>
         ) : null}
-        <button class="button" type="button" onClick={reset} disabled={!moves}>
+        <button class="button" type="button" onClick={reset} disabled={!moves && status !== 'failed'}>
           {solved ? 'Try again' : 'Start over'}
         </button>
       </div>

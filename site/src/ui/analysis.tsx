@@ -210,9 +210,10 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
   }, [line]);
   const pgn = useMemo(() => linePgn(line), [line.start, line.moves]);
 
-  // Every change of position retires a half-typed FEN and any old load error.
+  // Every change of position retires a half-typed FEN, any old load error and an unanswered promotion.
   const change = (update: (a: Analysis) => Analysis) => {
     setLine(update);
+    setPromoting(null);
     setDraft(null);
     setFenError(undefined);
     setNotice(undefined);
@@ -392,10 +393,7 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
                 square={promoting.to}
                 color={position.turn === 'w' ? 'white' : 'black'}
                 orientation={orientation === 'w' ? 'white' : 'black'}
-                onPick={(piece) => {
-                  change((a) => playMove(a, { ...promoting, promotion: piece }));
-                  setPromoting(null);
-                }}
+                onPick={(piece) => change((a) => playMove(a, { ...promoting, promotion: piece }))}
                 onCancel={() => setPromoting(null)}
               />
             ) : null}

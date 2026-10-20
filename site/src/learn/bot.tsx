@@ -122,11 +122,15 @@ export function BotGame() {
     setThinking(false);
   };
 
-  // A failed engine is replaced, then the bot gets its turn back.
-  const retry = () => {
+  // A failed engine is replaced; the bot moves again only if it is its turn.
+  const replaceEngine = () => {
     engine.current?.terminate();
     engine.current = new LiveEngine(4);
-    botTurn();
+    setEngineFailed(false);
+  };
+  const retry = () => {
+    replaceEngine();
+    if (side && game.current.turn() !== side[0]) botTurn();
   };
 
   const start = (s: Side) => {
@@ -173,6 +177,8 @@ export function BotGame() {
   const takeBack = () => {
     if (!side) return;
     cancelBot();
+    setPromoting(null);
+    if (engineFailed) replaceEngine();
     chess.undo();
     if (chess.turn() !== side[0]) chess.undo();
     sync();
