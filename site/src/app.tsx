@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'preact/hooks';
 import { fetchGames, reviewHash, type GameSummary, type Site } from './sources';
 import { Review } from './ui/review';
+import { ThemePicker, reducedMotion } from './ui/theme';
+
+const OPERA_GAME = `[Event "Paris"]
+[Site "Paris FRA"]
+[Date "1858.??.??"]
+[White "Paul Morphy"]
+[Black "Duke Karl / Count Isouard"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7 8. Nc3 c6 9. Bg5 b5
+10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7 14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8# 1-0`;
 
 function readHash() {
   const params = new URLSearchParams(location.hash.slice(1));
@@ -11,8 +22,13 @@ export function App() {
   const [route, setRoute] = useState(readHash);
   useEffect(() => {
     const onHash = () => {
-      setRoute(readHash());
-      window.scrollTo(0, 0);
+      const swap = () => {
+        setRoute(readHash());
+        window.scrollTo(0, 0);
+      };
+      if (!document.startViewTransition || reducedMotion()) return swap();
+      // Crossfade between the start page and a review; Preact renders on the next microtask.
+      document.startViewTransition(() => new Promise<void>((resolve) => (swap(), setTimeout(resolve))));
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
@@ -56,13 +72,19 @@ function Home() {
 
   return (
     <main class="home">
-      <header class="home-head">
+      <div class="home-top">
         <p class="wordmark">kibitz</p>
+        <ThemePicker />
+      </div>
+      <header class="home-head">
         <h1>Every move graded. No paywall, no daily limit.</h1>
         <p class="home-lede">
           Brilliant to blunder, accuracy for both sides, and the move you should have played. Stockfish runs on your own
           device, so the review costs nothing and your games never leave your browser.
         </p>
+        <a class="demo-link" href={reviewHash(OPERA_GAME)}>
+          No game handy? Review Morphy's Opera Game, 1858 <span aria-hidden="true">→</span>
+        </a>
       </header>
 
       <section class="home-card" aria-labelledby="by-user">
@@ -97,21 +119,26 @@ function Home() {
         {games && !games.length ? <p class="muted">No recent finished standard games.</p> : null}
         {games?.length ? (
           <ul class="game-list">
-            {games.map((g) => {
+            {games.map((g, i) => {
               const asBlack = g.black.toLowerCase() === me;
+              const asWhite = g.white.toLowerCase() === me;
+              const outcome =
+                g.result === '½-½' ? 'draw' : !asWhite && !asBlack ? null : (g.result === '1-0') === asWhite ? 'won' : 'lost';
               return (
-                <li key={g.id}>
+                <li key={g.id} style={`--i:${Math.min(i, 12)}`}>
                   <a href={reviewHash(g.pgn, asBlack ? 'b' : 'w')}>
                     <span class="game-date">{date.format(g.endedAt)}</span>
                     <span class="game-players">
-                      <span class={g.white.toLowerCase() === me ? 'me' : ''}>{g.white}</span>
+                      <span class={asWhite ? 'me' : ''}>{g.white}</span>
                       {g.whiteElo ? <span class="elo"> {g.whiteElo}</span> : null}
                       <span class="vs"> vs </span>
                       <span class={asBlack ? 'me' : ''}>{g.black}</span>
                       {g.blackElo ? <span class="elo"> {g.blackElo}</span> : null}
                     </span>
                     <span class="game-speed">{g.speed}</span>
-                    <span class="game-result">{g.result}</span>
+                    <span class={`game-result ${outcome ? `game-${outcome}` : ''}`}>
+                      {outcome === 'won' ? 'Won' : outcome === 'lost' ? 'Lost' : outcome === 'draw' ? 'Draw' : g.result}
+                    </span>
                   </a>
                 </li>
               );

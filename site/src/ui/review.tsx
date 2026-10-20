@@ -6,7 +6,8 @@ import { epd, parseGame, type Game } from '../game';
 import { GRADES, gameAccuracy, reviewGame, type Grade, type MoveReview, type Score } from '../review';
 import { Board } from './board';
 import { EvalGraph } from './graph';
-import { GRADE_INFO, NOTABLE, badgeSvg } from './grades';
+import { GRADE_INFO, GradeIcon, NOTABLE, badgeSvg } from './grades';
+import { ThemePicker, reducedMotion } from './theme';
 
 const DEPTHS = [
   { depth: 12, label: 'Quick' },
@@ -180,6 +181,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
             ))}
           </select>
         </label>
+        <ThemePicker />
       </header>
 
       <section class="stage">
@@ -197,40 +199,42 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
         </div>
         <PlayerStrip {...player(bottom)} color={bottom} />
         <EvalGraph scores={scores} moves={moves} current={index} onSelect={go} />
-        <div class="progress" role="status" aria-live="polite">
+        {complete ? <TurningPoints game={game} moves={moves} current={index} onSelect={go} /> : null}
+        <p class="progress" role="status">
           {failure ? (
             <span class="progress-error">Engine stopped: {failure}</span>
           ) : complete ? (
-            <span>
-              Reviewed at depth {depth} with Stockfish 19 on your device. Arrow keys step through moves, F flips the board.
-            </span>
+            `Reviewed at depth ${depth} with Stockfish 19 on your device. Arrow keys step through moves, F flips the board.`
           ) : (
-            <>
-              <span>
-                Analysing on your device · {analysed} of {total} positions
-              </span>
-              <span class="progress-bar" style={`--done:${analysed / total}`} />
-            </>
+            'Stockfish is running in this tab. Moves get graded as their positions finish.'
           )}
-        </div>
+        </p>
       </section>
 
       <aside class="panel">
-        <Summary moves={moves} game={game} accuracy={accuracy} onJump={jumpTo} complete={complete} />
+        <Summary
+          moves={moves}
+          game={game}
+          accuracy={accuracy}
+          names={{ w: player('w').name, b: player('b').name }}
+          analysed={analysed}
+          total={total}
+          onJump={jumpTo}
+        />
         <Comment game={game} index={index} move={move} before={scores[index - 1]} after={score} opening={opening} />
         <MoveList game={game} moves={moves} current={index} onSelect={go} />
         <nav class="controls" aria-label="Move navigation">
-          <button type="button" onClick={() => go(0)} aria-label="First move">
-            ⏮
+          <button type="button" onClick={() => go(0)} aria-label="First move" disabled={index === 0}>
+            <NavIcon d="M7 6v12M18 6l-8 6 8 6z" />
           </button>
-          <button type="button" onClick={() => go(index - 1)} aria-label="Previous move">
-            ◀
+          <button type="button" onClick={() => go(index - 1)} aria-label="Previous move" disabled={index === 0}>
+            <NavIcon d="M16 6l-8 6 8 6z" />
           </button>
-          <button type="button" onClick={() => go(index + 1)} aria-label="Next move">
-            ▶
+          <button type="button" onClick={() => go(index + 1)} aria-label="Next move" disabled={index === total - 1}>
+            <NavIcon d="M8 6l8 6-8 6z" />
           </button>
-          <button type="button" onClick={() => go(total - 1)} aria-label="Last move">
-            ⏭
+          <button type="button" onClick={() => go(total - 1)} aria-label="Last move" disabled={index === total - 1}>
+            <NavIcon d="M17 6v12M6 6l8 6-8 6z" />
           </button>
           <button type="button" class="controls-flip" onClick={() => setOrientation((o) => (o === 'w' ? 'b' : 'w'))}>
             Flip board
@@ -241,14 +245,42 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   );
 }
 
+const NavIcon = ({ d }: { d: string }) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+    <path d={d} fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+  </svg>
+);
+
+/** Counts up to a number when it first arrives, so the finished review lands as a moment. */
+function useCountUp(target: number | undefined, ms = 750): number | undefined {
+  const [value, setValue] = useState(target);
+  const key = target === undefined || Number.isNaN(target) ? undefined : target.toFixed(1);
+  useEffect(() => {
+    if (key === undefined || target === undefined || reducedMotion()) return setValue(target);
+    let frame = 0;
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / ms);
+      setValue(target * (1 - (1 - t) ** 3));
+      if (t < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [key]);
+  return value;
+}
+
+const fmt = (x?: number) => (x === undefined || Number.isNaN(x) ? '—' : x.toFixed(1));
+
 function PlayerStrip({ name, elo, accuracy, color }: { name: string; elo?: string; accuracy?: number; color: 'w' | 'b' }) {
+  const shown = useCountUp(accuracy);
   return (
     <div class="player">
       <span class={`player-swatch player-swatch-${color}`} aria-hidden="true" />
       <span class="player-name">{name}</span>
       {elo && elo !== '?' ? <span class="player-elo">{elo}</span> : null}
       <span class="player-accuracy" title="Accuracy">
-        {accuracy !== undefined && !Number.isNaN(accuracy) ? accuracy.toFixed(1) : ''}
+        {accuracy !== undefined && !Number.isNaN(accuracy) ? fmt(shown) : ''}
       </span>
     </div>
   );
@@ -259,7 +291,18 @@ function EvalBar({ score, orientation }: { score?: Score; orientation: 'w' | 'b'
   return (
     <div class={`evalbar ${orientation === 'b' ? 'evalbar-flipped' : ''}`} aria-label={score ? `Evaluation ${score.label}` : 'Evaluation pending'}>
       <div class="evalbar-white" style={`--white:${white / 100}`} />
-      <span class={`evalbar-label ${white >= 50 ? 'evalbar-label-white' : 'evalbar-label-black'}`}>{score?.label.replace(/^[+-]/, '') ?? '…'}</span>
+      <span class="evalbar-mid" aria-hidden="true" />
+      <span class={`evalbar-label ${white >= 50 ? 'evalbar-label-white' : 'evalbar-label-black'}`}>{score?.label.replace(/^[+-]/, '') ?? ''}</span>
+    </div>
+  );
+}
+
+function Accuracy({ name, value, align }: { name: string; value?: number; align: 'start' | 'end' }) {
+  const shown = useCountUp(value);
+  return (
+    <div class={`accuracy accuracy-${align}`}>
+      <span class="summary-label">{name}</span>
+      <strong>{fmt(shown)}</strong>
     </div>
   );
 }
@@ -268,32 +311,47 @@ function Summary(props: {
   moves: (MoveReview | undefined)[];
   game: Game;
   accuracy?: { w: number; b: number };
-  complete: boolean;
+  names: { w: string; b: string };
+  analysed: number;
+  total: number;
   onJump: (grade: Grade, color: 'w' | 'b') => void;
 }) {
-  const { moves, game, accuracy, onJump } = props;
+  const { moves, game, accuracy, names, analysed, total, onJump } = props;
   const counts = (grade: Grade, color: 'w' | 'b') => game.plies.filter((p, i) => p.color === color && moves[i]?.grade === grade).length;
-  const fmt = (x?: number) => (x === undefined || Number.isNaN(x) ? '—' : x.toFixed(1));
 
   return (
     <section class="summary" aria-label="Game summary">
-      <div class="summary-accuracy">
-        <div>
-          <span class="summary-label">White accuracy</span>
-          <strong>{fmt(accuracy?.w)}</strong>
+      {accuracy ? (
+        <div class="summary-accuracy">
+          <Accuracy name={names.w} value={accuracy.w} align="start" />
+          <span class="summary-label summary-accuracy-title">Accuracy</span>
+          <Accuracy name={names.b} value={accuracy.b} align="end" />
         </div>
-        <div>
-          <span class="summary-label">Black accuracy</span>
-          <strong>{fmt(accuracy?.b)}</strong>
+      ) : (
+        <div class="summary-progress">
+          <span class="summary-label">Reviewing on your device</span>
+          <strong>
+            {analysed}
+            <span class="summary-total"> / {total} positions</span>
+          </strong>
+          <span
+            class="progress-bar"
+            role="progressbar"
+            aria-label="Positions analysed"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={analysed}
+            style={`--done:${analysed / total}`}
+          />
         </div>
-      </div>
+      )}
       <table class="grades">
         <caption class="visually-hidden">Moves by grade. Select a count to jump to the next such move.</caption>
         <thead class="visually-hidden">
           <tr>
-            <th scope="col">White</th>
+            <th scope="col">{names.w}</th>
             <th scope="col">Grade</th>
-            <th scope="col">Black</th>
+            <th scope="col">{names.b}</th>
           </tr>
         </thead>
         <tbody>
@@ -303,19 +361,21 @@ function Summary(props: {
             return (
               <tr key={grade} class={w + b === 0 ? 'grades-empty' : ''}>
                 <td>
-                  <button type="button" disabled={!w} onClick={() => onJump(grade, 'w')} aria-label={`${w} white ${grade}`}>
-                    {w}
+                  <button type="button" disabled={!w} onClick={() => onJump(grade, 'w')} aria-label={`${w} ${grade} by ${names.w}`}>
+                    <span class="count" key={w}>
+                      {w}
+                    </span>
                   </button>
                 </td>
                 <th scope="row">
-                  <span class="glyph" style={`--g:var(--g-${grade})`} aria-hidden="true">
-                    {GRADE_INFO[grade].glyph}
-                  </span>
+                  <GradeIcon grade={grade} />
                   {GRADE_INFO[grade].label}
                 </th>
                 <td>
-                  <button type="button" disabled={!b} onClick={() => onJump(grade, 'b')} aria-label={`${b} black ${grade}`}>
-                    {b}
+                  <button type="button" disabled={!b} onClick={() => onJump(grade, 'b')} aria-label={`${b} ${grade} by ${names.b}`}>
+                    <span class="count" key={b}>
+                      {b}
+                    </span>
                   </button>
                 </td>
               </tr>
@@ -332,55 +392,101 @@ function moveName(game: Game, i: number) {
   return `${p.moveNumber}${p.color === 'w' ? '.' : '…'} ${p.san}`;
 }
 
+const TURNING: ReadonlySet<Grade> = new Set(['brilliant', 'great', 'miss', 'mistake', 'blunder']);
+
+/** The few moves that decided the game: every brilliant move plus the biggest swings, in game order. */
+function TurningPoints({ game, moves, current, onSelect }: { game: Game; moves: (MoveReview | undefined)[]; current: number; onSelect: (i: number) => void }) {
+  const picks = moves
+    .flatMap((m, i) => (m && TURNING.has(m.grade) ? [{ i, m }] : []))
+    .sort((a, b) => (b.m.grade === 'brilliant' ? 100 : b.m.loss) - (a.m.grade === 'brilliant' ? 100 : a.m.loss))
+    .slice(0, 5)
+    .sort((a, b) => a.i - b.i);
+  if (!picks.length) return null;
+  return (
+    <div class="turning">
+      <span class="turning-label">Turning points</span>
+      {picks.map(({ i, m }) => (
+        <button
+          key={i}
+          type="button"
+          class="turning-point"
+          aria-current={current === i + 1 ? 'true' : undefined}
+          onClick={() => onSelect(i + 1)}
+          title={GRADE_INFO[m.grade].label}
+        >
+          <GradeIcon grade={m.grade} />
+          <span class="san">{moveName(game, i)}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Comment(props: { game: Game; index: number; move?: MoveReview; before?: Score; after?: Score; opening?: string }) {
   const { game, index, move, before, after, opening } = props;
+  const tint = move ? `--g:var(--g-${move.grade})` : undefined;
+  let body;
   if (index === 0) {
-    return (
-      <section class="comment">
+    body = (
+      <>
         <p class="comment-lead">{opening ?? 'Starting position'}</p>
         <p class="comment-detail">Step through the game to see how each move was graded.</p>
-      </section>
+      </>
     );
-  }
-  const name = moveName(game, index - 1);
-  if (!move) {
-    return (
-      <section class="comment">
-        <p class="comment-lead">{name}</p>
+  } else if (!move) {
+    body = (
+      <>
+        <p class="comment-lead">
+          <strong>{moveName(game, index - 1)}</strong>
+        </p>
         <p class="comment-detail">Still analysing this move…</p>
-      </section>
+      </>
+    );
+  } else {
+    body = (
+      <>
+        <p class="comment-lead">
+          <GradeIcon grade={move.grade} solid />
+          <span>
+            <strong>{moveName(game, index - 1)}</strong> is {GRADE_INFO[move.grade].phrase}.
+          </span>
+        </p>
+        {move.grade === 'book' && opening ? <p class="comment-detail">{opening}</p> : null}
+        {move.best ? (
+          <p class="comment-detail">
+            {move.grade === 'miss' ? 'You had ' : 'Best was '}
+            <strong class="san">{move.best}</strong>
+            {move.bestLine && move.bestLine.length > 1 ? <span class="comment-line"> {move.bestLine.slice(1).join(' ')}</span> : null}
+          </p>
+        ) : null}
+        {before && after && move.grade !== 'book' ? (
+          <p class="comment-eval">
+            {before.label} → {after.label}
+          </p>
+        ) : null}
+      </>
     );
   }
-  const info = GRADE_INFO[move.grade];
   return (
-    <section class="comment" style={`--g:var(--g-${move.grade})`}>
-      <p class="comment-lead">
-        <span class="glyph glyph-solid" aria-hidden="true">
-          {info.glyph}
-        </span>
-        <strong>{name}</strong> is {info.phrase}.
-      </p>
-      {move.grade === 'book' && opening ? <p class="comment-detail">{opening}</p> : null}
-      {move.best ? (
-        <p class="comment-detail">
-          {move.grade === 'miss' ? 'You had ' : 'Best was '}
-          <strong class="san">{move.best}</strong>
-          {move.bestLine && move.bestLine.length > 1 ? <span class="comment-line"> {move.bestLine.slice(1).join(' ')}</span> : null}
-        </p>
-      ) : null}
-      {before && after && move.grade !== 'book' ? (
-        <p class="comment-eval">
-          {before.label} → {after.label}
-        </p>
-      ) : null}
+    <section class="comment" style={tint} aria-live="polite">
+      <div class="comment-body" key={index}>
+        {body}
+      </div>
     </section>
   );
 }
 
 function MoveList({ game, moves, current, onSelect }: { game: Game; moves: (MoveReview | undefined)[]; current: number; onSelect: (i: number) => void }) {
   const list = useRef<HTMLOListElement>(null);
+  // Scroll the list itself, never the page: on phones the list sits below the board.
   useEffect(() => {
-    list.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+    const box = list.current;
+    const row = box?.querySelector('[aria-current="true"]');
+    if (!box || !row) return;
+    const r = row.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    const by = r.top < b.top ? r.top - b.top - 4 : r.bottom > b.bottom ? r.bottom - b.bottom + 4 : 0;
+    if (by) box.scrollBy({ top: by, behavior: reducedMotion() ? 'auto' : 'smooth' });
   }, [current]);
 
   const cell = (i: number) => {
@@ -397,7 +503,7 @@ function MoveList({ game, moves, current, onSelect }: { game: Game; moves: (Move
         title={m ? GRADE_INFO[m.grade].label : undefined}
       >
         <span class="san">{p.san}</span>
-        {m && NOTABLE.has(m.grade) ? <span class="move-glyph">{GRADE_INFO[m.grade].glyph}</span> : m ? <span class="move-dot" aria-hidden="true" /> : null}
+        {m && NOTABLE.has(m.grade) ? <GradeIcon grade={m.grade} /> : m ? <span class="move-dot" aria-hidden="true" /> : null}
       </button>
     );
   };

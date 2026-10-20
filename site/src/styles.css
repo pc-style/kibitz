@@ -1,4 +1,4 @@
-/* Tokens: see DESIGN.md. Dark only, by design. */
+/* Tokens: see DESIGN.md. Each theme sets the same roles; [data-theme] can sit on any element. */
 :root {
   --font-sans: 'Schibsted Grotesk', 'Helvetica Neue', sans-serif;
   --font-mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -15,10 +15,22 @@
   --r-sm: 4px;
   --r-md: 8px;
 
+  /* Motion: short and decelerating; nothing here loops except live analysis. */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 320ms;
+}
+
+:root,
+[data-theme='felt'] {
   --bg: oklch(0.17 0.012 165);
   --surface: oklch(0.205 0.014 165);
   --surface-2: oklch(0.25 0.016 165);
+  --surface-hover: oklch(0.29 0.018 165);
+  --row-alt: oklch(0.22 0.014 165);
   --border: oklch(0.32 0.016 165);
+  --border-strong: oklch(0.4 0.02 165);
   --fg: oklch(0.94 0.008 110);
   --muted: oklch(0.73 0.02 150);
   --accent: oklch(0.84 0.15 88);
@@ -26,10 +38,12 @@
   --accent-fg: oklch(0.22 0.03 88);
   --accent-tint: oklch(0.84 0.15 88 / 0.16);
   --error: oklch(0.72 0.16 25);
-
   --sq-light: oklch(0.83 0.035 125);
   --sq-dark: oklch(0.57 0.055 150);
+  --last-move: oklch(0.86 0.13 95 / 0.42);
   --board-edge: oklch(0.15 0.012 165);
+  --night: oklch(0.12 0.01 165);
+  --day: oklch(0.92 0.01 110);
   --g-ink: oklch(0.17 0.012 165);
 
   --g-brilliant: oklch(0.78 0.12 192);
@@ -44,10 +58,102 @@
   --g-blunder: oklch(0.64 0.2 25);
   --g-forced: oklch(0.68 0.02 150);
 
-  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --dur: 160ms;
-
   color-scheme: dark;
+}
+
+/* Warm wood: walnut and maple board, copper accent. */
+[data-theme='walnut'] {
+  --bg: oklch(0.18 0.014 50);
+  --surface: oklch(0.215 0.016 50);
+  --surface-2: oklch(0.26 0.02 50);
+  --surface-hover: oklch(0.3 0.022 50);
+  --row-alt: oklch(0.23 0.016 50);
+  --border: oklch(0.34 0.022 50);
+  --border-strong: oklch(0.43 0.026 50);
+  --fg: oklch(0.94 0.014 80);
+  --muted: oklch(0.75 0.03 65);
+  --accent: oklch(0.75 0.14 48);
+  --accent-hover: oklch(0.8 0.12 50);
+  --accent-fg: oklch(0.2 0.03 48);
+  --accent-tint: oklch(0.75 0.14 48 / 0.18);
+  --sq-light: oklch(0.87 0.05 82);
+  --sq-dark: oklch(0.62 0.085 58);
+  --last-move: oklch(0.8 0.13 75 / 0.45);
+  --board-edge: oklch(0.15 0.014 50);
+  --night: oklch(0.13 0.012 50);
+  --day: oklch(0.93 0.02 80);
+  --g-ink: oklch(0.18 0.014 50);
+  color-scheme: dark;
+}
+
+/* Blue slate with a cyan accent, for late-night blitz sessions. */
+[data-theme='midnight'] {
+  --bg: oklch(0.165 0.022 258);
+  --surface: oklch(0.2 0.026 258);
+  --surface-2: oklch(0.245 0.03 258);
+  --surface-hover: oklch(0.285 0.032 258);
+  --row-alt: oklch(0.215 0.026 258);
+  --border: oklch(0.32 0.03 258);
+  --border-strong: oklch(0.41 0.035 258);
+  --fg: oklch(0.94 0.01 240);
+  --muted: oklch(0.73 0.03 245);
+  --accent: oklch(0.8 0.12 195);
+  --accent-hover: oklch(0.86 0.1 195);
+  --accent-fg: oklch(0.2 0.03 220);
+  --accent-tint: oklch(0.8 0.12 195 / 0.16);
+  --sq-light: oklch(0.88 0.025 235);
+  --sq-dark: oklch(0.6 0.07 245);
+  --last-move: oklch(0.82 0.1 195 / 0.42);
+  --board-edge: oklch(0.14 0.02 258);
+  --night: oklch(0.12 0.02 258);
+  --day: oklch(0.92 0.012 240);
+  --g-ink: oklch(0.165 0.022 258);
+  color-scheme: dark;
+}
+
+/* Printed-diagram daylight theme. Grade colors darken so they stay readable as text on white. */
+[data-theme='paper'] {
+  --bg: oklch(0.97 0.004 250);
+  --surface: oklch(0.995 0.002 250);
+  --surface-2: oklch(0.94 0.006 250);
+  --surface-hover: oklch(0.91 0.008 250);
+  --row-alt: oklch(0.97 0.004 250);
+  --border: oklch(0.87 0.01 250);
+  --border-strong: oklch(0.78 0.014 250);
+  --fg: oklch(0.24 0.02 260);
+  --muted: oklch(0.5 0.02 260);
+  --accent: oklch(0.5 0.16 258);
+  --accent-hover: oklch(0.44 0.16 258);
+  --accent-fg: oklch(0.98 0.005 250);
+  --accent-tint: oklch(0.5 0.16 258 / 0.1);
+  --error: oklch(0.52 0.18 25);
+  --sq-light: oklch(0.93 0.012 240);
+  --sq-dark: oklch(0.68 0.05 245);
+  --last-move: oklch(0.85 0.12 95 / 0.55);
+  --board-edge: oklch(0.3 0.02 260);
+  --night: oklch(0.3 0.02 260);
+  --day: oklch(0.97 0.004 250);
+  --g-ink: oklch(0.99 0 0);
+
+  --g-brilliant: oklch(0.58 0.11 195);
+  --g-great: oklch(0.52 0.14 250);
+  --g-best: oklch(0.55 0.15 145);
+  --g-excellent: oklch(0.56 0.11 150);
+  --g-good: oklch(0.56 0.05 150);
+  --g-book: oklch(0.55 0.07 60);
+  --g-inaccuracy: oklch(0.63 0.14 85);
+  --g-mistake: oklch(0.6 0.15 55);
+  --g-miss: oklch(0.55 0.17 20);
+  --g-blunder: oklch(0.52 0.2 25);
+  --g-forced: oklch(0.55 0.02 250);
+  color-scheme: light;
+}
+
+/* The page's own colors, captured once so theme swatches (which carry their own theme) can still use them. */
+html {
+  --page-bg: var(--bg);
+  --page-fg: var(--fg);
+  --page-accent: var(--accent);
 }
 
 *,
@@ -79,7 +185,7 @@ a {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--page-accent);
   outline-offset: 2px;
 }
 
@@ -109,6 +215,24 @@ a {
   letter-spacing: -0.02em;
 }
 
+/* Grade icons: one 24px symbol per grade, sized by context. */
+.gi {
+  flex: none;
+  width: 1.3em;
+  height: 1.3em;
+  color: var(--g);
+  vertical-align: -0.3em;
+}
+
+.gi-solid {
+  width: 28px;
+  height: 28px;
+  padding: 2px;
+  border-radius: 14px;
+  background: var(--g);
+  color: var(--g-ink);
+}
+
 /* Buttons and fields */
 
 button {
@@ -131,24 +255,33 @@ button {
   font: 500 var(--t-base) / 1 var(--font-sans);
   text-decoration: none;
   cursor: pointer;
-  transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
 .button:hover,
-.controls button:hover,
+.controls button:hover:not(:disabled),
 .depth select:hover {
-  background: oklch(0.29 0.018 165);
-  border-color: oklch(0.4 0.02 165);
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 
-.button:active,
-.controls button:active {
-  background: var(--surface);
+/* Press feedback: a slight give, not a bounce. */
+.button:active:not(:disabled),
+.controls button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .button:disabled {
   opacity: 0.5;
   cursor: progress;
+}
+
+.controls button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .button-primary {
@@ -161,10 +294,6 @@ button {
 .button-primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-}
-
-.button-primary:active {
-  background: var(--accent);
 }
 
 .field {
@@ -184,6 +313,7 @@ button {
   background: var(--bg);
   color: var(--fg);
   font: 400 var(--t-base) / 1.4 var(--font-sans);
+  transition: border-color var(--dur) var(--ease-out);
 }
 
 .field textarea {
@@ -193,7 +323,7 @@ button {
 
 .field input:hover,
 .field textarea:hover {
-  border-color: oklch(0.4 0.02 165);
+  border-color: var(--border-strong);
 }
 
 .field input:focus-visible,
@@ -223,6 +353,9 @@ button {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
 }
 
 .segmented button:hover {
@@ -234,12 +367,49 @@ button {
   color: var(--fg);
 }
 
+/* Theme swatches: each one carries its own data-theme, so it previews that theme's board. */
+.themes {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.theme-swatch {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--board-edge);
+  border-radius: var(--r-sm);
+  background: repeating-conic-gradient(var(--sq-dark) 0 25%, var(--sq-light) 0 50%) 0 0 / 50% 50%;
+  cursor: pointer;
+  transition:
+    box-shadow var(--dur) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.theme-swatch:hover {
+  box-shadow: 0 0 0 2px var(--page-bg), 0 0 0 3px var(--page-fg);
+}
+
+.theme-swatch[aria-checked='true'] {
+  box-shadow: 0 0 0 2px var(--page-bg), 0 0 0 4px var(--accent);
+}
+
+.theme-swatch:active {
+  transform: scale(0.92);
+}
+
+.theme-swatch:focus-visible {
+  outline: 2px solid var(--page-fg);
+  outline-offset: 5px;
+}
+
 /* Home */
 
 .home {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   grid-template-areas:
+    'top top'
     'head user'
     'head pgn'
     'foot foot';
@@ -247,15 +417,25 @@ button {
   gap: calc(var(--space) * 6) calc(var(--space) * 14);
   max-width: 1180px;
   margin: 0 auto;
-  padding: calc(var(--space) * 14) calc(var(--space) * 8);
+  padding: calc(var(--space) * 10) calc(var(--space) * 8) calc(var(--space) * 14);
+}
+
+.home-top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
 }
 
 .home-head {
   grid-area: head;
   position: sticky;
-  top: calc(var(--space) * 14);
+  top: calc(var(--space) * 10);
   display: grid;
+  justify-items: start;
   gap: calc(var(--space) * 5);
+  padding-top: calc(var(--space) * 2);
 }
 
 .home-head h1 {
@@ -269,6 +449,28 @@ button {
   color: var(--muted);
   font-size: var(--t-md);
   line-height: 1.5;
+}
+
+.demo-link {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition: text-decoration-color var(--dur) var(--ease-out);
+}
+
+.demo-link span {
+  display: inline-block;
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.demo-link:hover {
+  text-decoration-color: currentColor;
+}
+
+.demo-link:hover span {
+  transform: translateX(3px);
 }
 
 .home-card {
@@ -319,19 +521,26 @@ button {
   overflow-y: auto;
 }
 
+/* New results slide in top to bottom, so it's clear the list changed. */
+.game-list li {
+  animation: kb-enter var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--i) * 22ms);
+}
+
 .game-list a {
   display: grid;
-  grid-template-columns: 4.2rem minmax(0, 1fr) 4.5rem 2.6rem;
+  grid-template-columns: 4.2rem minmax(0, 1fr) 4.5rem 2.8rem;
   align-items: baseline;
   gap: calc(var(--space) * 3);
   min-height: 40px;
   padding: calc(var(--space) * 2.5) calc(var(--space) * 2);
   border-radius: var(--r-sm);
   text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 .game-list li + li a {
-  border-top: 1px solid oklch(0.26 0.014 165);
+  border-top: 1px solid var(--row-alt);
 }
 
 .game-list a:hover {
@@ -361,23 +570,28 @@ button {
 }
 
 .game-result {
-  font: 400 var(--t-sm) / 1 var(--font-mono);
+  font: 600 var(--t-sm) / 1 var(--font-sans);
   text-align: right;
-  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.game-won {
+  color: var(--g-best);
+}
+
+.game-lost {
+  color: var(--g-blunder);
 }
 
 .home-foot {
   grid-area: foot;
+  display: grid;
+  gap: calc(var(--space) * 2);
   max-width: 64ch;
   padding-top: calc(var(--space) * 4);
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: var(--t-sm);
-}
-
-.home-foot {
-  display: grid;
-  gap: calc(var(--space) * 2);
 }
 
 .home-foot strong,
@@ -393,7 +607,7 @@ button {
 /* Review */
 
 .review {
-  --board: min(calc(100svh - 252px), calc(100vw - 526px));
+  --board: min(calc(100svh - 268px), calc(100vw - 526px));
   display: grid;
   grid-template-columns: auto minmax(320px, 400px);
   grid-template-rows: auto 1fr;
@@ -435,6 +649,7 @@ button {
 
 .stage {
   display: grid;
+  align-content: start;
   gap: calc(var(--space) * 2);
   width: calc(var(--board) + 28px);
 }
@@ -456,17 +671,35 @@ button {
 
 .cg-wrap cg-board {
   background: repeating-conic-gradient(var(--sq-dark) 0 25%, var(--sq-light) 0 50%) 0 0 / 25% 25%;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
 .cg-wrap cg-board square.last-move {
-  background-color: oklch(0.86 0.13 95 / 0.42);
+  background-color: var(--last-move);
 }
 
+/* Coordinates take the opposite square color, like a printed board. */
 .cg-wrap coords {
   font: 600 10px / 1 var(--font-mono);
-  color: var(--board-edge);
-  opacity: 0.7;
+  color: var(--sq-light);
+}
+
+.cg-wrap.orientation-white coords.ranks coord:nth-child(even),
+.cg-wrap.orientation-white coords.files coord:nth-child(even),
+.cg-wrap.orientation-black coords.ranks coord:nth-child(odd),
+.cg-wrap.orientation-black coords.files coord:nth-child(odd) {
+  color: var(--sq-dark);
+}
+
+/* The grade badge lands on the square just played; the best-move arrow follows a beat later. */
+.cg-wrap .kb-badge {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kb-pop 240ms var(--ease-out) both;
+}
+
+.cg-wrap cg-shapes line {
+  animation: kb-fade 220ms var(--ease-out) 110ms both;
 }
 
 .evalbar {
@@ -474,21 +707,32 @@ button {
   flex: none;
   width: 20px;
   overflow: hidden;
-  border-radius: 2px;
-  background: oklch(0.12 0.01 165);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--night);
 }
 
 .evalbar-white {
   position: absolute;
   inset: 0;
-  background: var(--fg);
+  background: var(--day);
   transform-origin: bottom;
   transform: scaleY(var(--white));
-  transition: transform 240ms var(--ease-out);
+  transition: transform 320ms var(--ease-out);
 }
 
 .evalbar-flipped .evalbar-white {
   transform-origin: top;
+}
+
+.evalbar-mid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.55;
 }
 
 .evalbar-label {
@@ -502,12 +746,12 @@ button {
 
 .evalbar-label-white {
   bottom: 4px;
-  color: var(--g-ink);
+  color: var(--night);
 }
 
 .evalbar-label-black {
   top: 4px;
-  color: var(--fg);
+  color: var(--day);
 }
 
 .evalbar-flipped .evalbar-label-white {
@@ -533,15 +777,15 @@ button {
   width: 10px;
   height: 10px;
   border-radius: 2px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
 }
 
 .player-swatch-w {
-  background: var(--fg);
+  background: var(--day);
 }
 
 .player-swatch-b {
-  background: oklch(0.12 0.01 165);
+  background: var(--night);
 }
 
 .player-name {
@@ -559,13 +803,15 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-/* The signature: White's winning chances as an ink line, with notable moves marked where they happened. */
+/* The signature: White's winning chances as an ink area, with notable moves marked where they happened. */
 .graph {
   position: relative;
   height: 76px;
   margin-left: 28px;
-  border-radius: 2px;
-  background: oklch(0.12 0.01 165);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--night);
   cursor: pointer;
 }
 
@@ -574,32 +820,86 @@ button {
   inset: 0;
   width: 100%;
   height: 100%;
-  overflow: visible;
+}
+
+.graph-area {
+  transition: clip-path 700ms var(--ease-out);
 }
 
 .graph-area path {
-  fill: oklch(0.9 0.01 110);
+  fill: var(--day);
 }
 
-.graph-area line {
-  stroke: var(--border);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
+.graph-mid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--border-strong);
+  opacity: 0.6;
 }
 
 .graph-cursor {
-  stroke: var(--accent);
-  stroke-width: 2;
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  margin-left: -1px;
+  border-left: 2px solid var(--accent);
+  transition: transform var(--dur) var(--ease-out);
+  pointer-events: none;
 }
 
 .graph-marks circle {
   stroke: var(--board-edge);
   stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kb-pop 260ms var(--ease-out) both;
+}
+
+.turning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 1.5);
+  margin-left: 28px;
+}
+
+.turning-label {
+  margin-right: var(--space);
+  color: var(--muted);
+  font-size: var(--t-xs);
+}
+
+.turning-point {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 calc(var(--space) * 2) 0 calc(var(--space) * 1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: var(--t-sm);
+  cursor: pointer;
+  animation: kb-enter var(--dur-slow) var(--ease-out) both;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.turning-point:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.turning-point[aria-current='true'] {
+  background: var(--accent-tint);
+  border-color: var(--accent);
 }
 
 .progress {
-  display: grid;
-  gap: calc(var(--space) * 1.5);
   margin-left: 28px;
   color: var(--muted);
   font-size: var(--t-sm);
@@ -607,29 +907,40 @@ button {
 
 .progress-bar {
   display: block;
-  height: 3px;
+  height: 4px;
   border-radius: 2px;
   background: var(--surface-2);
   position: relative;
   overflow: hidden;
 }
 
+.progress-bar::before,
 .progress-bar::after {
   content: '';
   position: absolute;
   inset: 0;
+}
+
+.progress-bar::before {
   background: var(--accent);
   transform-origin: left;
   transform: scaleX(var(--done));
-  transition: transform 200ms var(--ease-out);
+  transition: transform 260ms var(--ease-out);
+}
+
+/* A sheen sweeps across while the engine is actually working. */
+.progress-bar::after {
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.35), transparent);
+  transform: translateX(-100%);
+  animation: kb-sheen 1.3s linear infinite;
 }
 
 .panel {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space) * 3);
-  height: calc(var(--board) + 136px);
-  min-height: 520px;
+  height: calc(var(--board) + 152px);
+  min-height: 540px;
 }
 
 .summary {
@@ -641,30 +952,63 @@ button {
   background: var(--surface);
 }
 
-.summary-accuracy {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: calc(var(--space) * 3);
-}
-
-.summary-accuracy div {
-  display: grid;
-  gap: var(--space);
-}
-
-.summary-accuracy div:last-child {
-  text-align: right;
-}
-
 .summary-label {
   color: var(--muted);
   font-size: var(--t-xs);
 }
 
-.summary-accuracy strong {
+.summary-accuracy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: calc(var(--space) * 3);
+  min-height: 52px;
+  animation: kb-enter var(--dur-slow) var(--ease-out) both;
+}
+
+.summary-accuracy-title {
+  align-self: center;
+  font: 600 var(--t-xs) / 1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.accuracy {
+  display: grid;
+  gap: var(--space);
+  min-width: 0;
+}
+
+.accuracy .summary-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accuracy-end {
+  text-align: right;
+}
+
+.accuracy strong {
   font: 600 var(--t-lg) / 1 var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
+}
+
+.summary-progress {
+  display: grid;
+  gap: calc(var(--space) * 1.5);
+  min-height: 52px;
+}
+
+.summary-progress strong {
+  font: 600 var(--t-md) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-total {
+  color: var(--muted);
+  font: 400 var(--t-xs) / 1 var(--font-sans);
 }
 
 .grades {
@@ -682,6 +1026,9 @@ button {
 }
 
 .grades tbody th {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
   font-weight: 500;
   text-align: left;
   white-space: nowrap;
@@ -692,25 +1039,35 @@ button {
 }
 
 .grades td button {
-  min-width: 32px;
+  min-width: 34px;
   min-height: 24px;
   padding: 0 calc(var(--space) * 2);
+  overflow: hidden;
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;
   font: 600 var(--t-sm) / 1 var(--font-mono);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 .grades td button:hover:not(:disabled) {
   background: var(--surface-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .grades td button:disabled {
   cursor: default;
   color: var(--muted);
-  opacity: 0.55;
+  opacity: 0.5;
+}
+
+/* A count that just changed rolls up into place. */
+.grades .count {
+  display: inline-block;
+  animation: kb-tick 220ms var(--ease-out) both;
 }
 
 .grades-empty th {
@@ -718,39 +1075,26 @@ button {
   opacity: 0.7;
 }
 
-.glyph {
-  display: inline-block;
-  min-width: 2.1em;
-  margin-right: calc(var(--space) * 1.5);
-  color: var(--g);
-  font: 600 0.95em / 1 var(--font-mono), 'DejaVu Sans', sans-serif;
-  letter-spacing: -0.06em;
-}
-
-.glyph-solid {
-  display: inline-grid;
-  place-items: center;
-  min-width: 26px;
-  height: 26px;
-  margin-right: calc(var(--space) * 2);
-  border-radius: 13px;
-  background: var(--g);
-  color: var(--g-ink);
-  font-size: 12px;
-  vertical-align: -6px;
-}
-
 .comment {
-  display: grid;
-  gap: calc(var(--space) * 1.5);
-  min-height: 108px;
+  min-height: 112px;
   padding: calc(var(--space) * 3.5) calc(var(--space) * 4);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  /* Mixed in oklab so a red grade stays red; oklch would rotate the hue toward the surface's. */
+  background: color-mix(in oklab, var(--g, var(--surface)) 10%, var(--surface));
+  transition: background-color var(--dur-slow) var(--ease-out);
+}
+
+.comment-body {
+  display: grid;
+  gap: calc(var(--space) * 1.5);
+  animation: kb-enter var(--dur) var(--ease-out) both;
 }
 
 .comment-lead {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2.5);
   font-size: var(--t-md);
   line-height: 1.35;
 }
@@ -759,6 +1103,10 @@ button {
   font-family: var(--font-mono);
   font-size: 0.86em;
   letter-spacing: -0.02em;
+}
+
+.comment-lead .gi-solid {
+  animation: kb-pop 240ms var(--ease-out) both;
 }
 
 .comment-detail {
@@ -798,7 +1146,7 @@ button {
 }
 
 .moves li:nth-child(even) {
-  background: oklch(0.22 0.014 165);
+  background: var(--row-alt);
 }
 
 .moves-num {
@@ -819,6 +1167,9 @@ button {
   background: transparent;
   text-align: left;
   cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .move:hover {
@@ -830,10 +1181,9 @@ button {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-.move-glyph {
-  color: var(--g);
-  font: 600 var(--t-xs) / 1 var(--font-mono);
-  letter-spacing: -0.06em;
+.move .gi {
+  width: 1.15em;
+  height: 1.15em;
 }
 
 .move-dot {
@@ -854,7 +1204,7 @@ button {
 }
 
 .controls button {
-  min-width: 44px;
+  min-width: 46px;
   padding: 0 calc(var(--space) * 3);
   font-size: var(--t-sm);
 }
@@ -880,11 +1230,62 @@ button {
   color: var(--muted);
 }
 
+/* Motion */
+
+@keyframes kb-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes kb-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes kb-tick {
+  from {
+    opacity: 0;
+    transform: translateY(60%);
+  }
+}
+
+@keyframes kb-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes kb-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Page changes crossfade quickly; theme changes use a reveal from the swatch instead (see theme.tsx). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--dur);
+}
+
+.theme-reveal::view-transition-old(root),
+.theme-reveal::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+.theme-reveal::view-transition-new(root) {
+  z-index: 1;
+}
+
 @media (max-width: 900px) {
   .home {
     grid-template-columns: 1fr;
-    grid-template-areas: 'head' 'user' 'pgn' 'foot';
-    padding: calc(var(--space) * 8) calc(var(--space) * 4);
+    grid-template-areas: 'top' 'head' 'user' 'pgn' 'foot';
+    padding: calc(var(--space) * 6) calc(var(--space) * 4) calc(var(--space) * 10);
   }
 
   .home-head {
@@ -896,13 +1297,22 @@ button {
     justify-items: stretch;
   }
 
+  /* One column, ordered for stepping through on a phone: board, verdict, controls, then the rest. */
   .review {
     --board: calc(100vw - 2 * var(--space) * 4 - 28px);
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space) * 3);
     padding: calc(var(--space) * 3) calc(var(--space) * 4) calc(var(--space) * 6);
   }
 
+  .stage,
+  .panel {
+    display: contents;
+  }
+
   .topbar {
+    order: 0;
     flex-wrap: wrap;
     gap: calc(var(--space) * 2) calc(var(--space) * 4);
   }
@@ -916,21 +1326,64 @@ button {
     margin-left: auto;
   }
 
-  .panel {
-    height: auto;
+  .stage > .player:first-child {
+    order: 1;
+  }
+
+  .board-row {
+    order: 2;
+  }
+
+  .stage > .player:nth-child(3) {
+    order: 3;
+  }
+
+  .comment {
+    order: 4;
     min-height: 0;
   }
 
+  .controls {
+    order: 5;
+  }
+
+  .graph {
+    order: 6;
+  }
+
+  .turning {
+    order: 7;
+  }
+
+  .progress {
+    order: 8;
+  }
+
+  .summary {
+    order: 9;
+  }
+
   .moves {
+    order: 10;
+    flex: none;
     max-height: 320px;
+  }
+
+  .controls button:not(.controls-flip) {
+    flex: 1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
+  *::after,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
     transition-duration: 0ms !important;
     animation-duration: 0ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

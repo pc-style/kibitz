@@ -14,7 +14,7 @@ const INACCURACY = 10;
 const MISTAKE = 20;
 /** The best line beats the second-best by at least this much: an only move. */
 const GREAT_GAP = 15;
-/** At or above this the mover is already winning, so nothing is brilliant or great. */
+/** At or above this the mover is already winning, so nothing is great, and only a sacrifice that forces mate is brilliant. */
 const DECIDED = 92;
 /** A brilliant sacrifice can't leave the mover worse off than this. */
 const STILL_FINE = 35;
@@ -108,7 +108,8 @@ export function reviewGame(
     const prev = moves[i - 1];
 
     let grade: Grade;
-    if ((isBest || loss <= EXCELLENT) && winBefore < DECIDED && winAfter >= STILL_FINE && isSacrifice(ply)) grade = 'brilliant';
+    const forcesMate = winAfter === 100; // only a mate score reaches 100
+    if ((isBest || loss <= EXCELLENT) && (winBefore < DECIDED || forcesMate) && winAfter >= STILL_FINE && isSacrifice(ply)) grade = 'brilliant';
     else if (isBest && gap >= GREAT_GAP && winBefore < DECIDED && !isRecapture(ply, game.plies[i - 1])) grade = 'great';
     else if (isBest) grade = 'best';
     else if (loss <= EXCELLENT) grade = 'excellent';

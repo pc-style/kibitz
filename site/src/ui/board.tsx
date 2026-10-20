@@ -19,7 +19,7 @@ export function Board({ fen, orientation, lastMove, shapes }: Props) {
     const cg = Chessground(el.current!, {
       viewOnly: true,
       coordinates: true,
-      animation: { enabled: true, duration: 150 },
+      animation: { enabled: true, duration: 180 },
       drawable: { enabled: false, visible: true },
     });
     cg.state.drawable.brushes.best = { key: 'kb', color: '#5fbf7a', opacity: 0.85, lineWidth: 12 };
