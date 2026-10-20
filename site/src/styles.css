@@ -523,8 +523,8 @@ button {
 
 /* New results slide in top to bottom, so it's clear the list changed. */
 .game-list li {
-  animation: kb-enter var(--dur-slow) var(--ease-out) both;
-  animation-delay: calc(var(--i) * 22ms);
+  animation: kb-enter var(--dur) var(--ease-out) both;
+  animation-delay: calc(var(--i) * 12ms);
 }
 
 .game-list a {
@@ -678,10 +678,32 @@ button {
   background-color: var(--last-move);
 }
 
-/* Coordinates take the opposite square color, like a printed board. */
+/* Coordinates sit inside their own square (number top-left, letter bottom-right) in the opposite square color. */
 .cg-wrap coords {
   font: 600 10px / 1 var(--font-mono);
   color: var(--sq-light);
+  opacity: 0.9;
+}
+
+.cg-wrap coords.ranks {
+  top: 3px;
+  left: 3px;
+  width: auto;
+}
+
+.cg-wrap coords.ranks coord {
+  transform: none;
+}
+
+.cg-wrap coords.files {
+  left: 0;
+  bottom: 3px;
+  height: auto;
+  text-align: right;
+}
+
+.cg-wrap coords.files coord {
+  padding-right: 3px;
 }
 
 .cg-wrap.orientation-white coords.ranks coord:nth-child(even),
@@ -695,11 +717,26 @@ button {
 .cg-wrap .kb-badge {
   transform-box: fill-box;
   transform-origin: center;
-  animation: kb-pop 240ms var(--ease-out) both;
+  animation: kb-pop var(--dur) var(--ease-out) both;
 }
 
-.cg-wrap cg-shapes line {
-  animation: kb-fade 220ms var(--ease-out) 110ms both;
+.cg-wrap .cg-shapes line {
+  animation: kb-fade var(--dur) var(--ease-out) both;
+}
+
+/* While stepping quickly (held arrow keys), every position shows instantly; see go() in review.tsx. */
+.review[data-rapid] .kb-badge,
+.review[data-rapid] .cg-shapes line,
+.review[data-rapid] .comment-body,
+.review[data-rapid] .comment-lead .gi-solid {
+  animation: none;
+}
+
+.review[data-rapid] .evalbar-white,
+.review[data-rapid] .graph-cursor,
+.review[data-rapid] .comment,
+.review[data-rapid] .move {
+  transition: none;
 }
 
 .evalbar {
@@ -718,7 +755,7 @@ button {
   background: var(--day);
   transform-origin: bottom;
   transform: scaleY(var(--white));
-  transition: transform 320ms var(--ease-out);
+  transition: transform 160ms var(--ease-out);
 }
 
 .evalbar-flipped .evalbar-white {
@@ -822,8 +859,9 @@ button {
   height: 100%;
 }
 
-.graph-area {
-  transition: clip-path 700ms var(--ease-out);
+/* Linear, so markers (delayed by their x position) pop exactly as the line reaches them. */
+.graph-revealing {
+  transition: clip-path 700ms linear;
 }
 
 .graph-area path {
@@ -846,7 +884,7 @@ button {
   width: 100%;
   margin-left: -1px;
   border-left: 2px solid var(--accent);
-  transition: transform var(--dur) var(--ease-out);
+  transition: transform var(--dur-fast) var(--ease-out);
   pointer-events: none;
 }
 
@@ -928,8 +966,8 @@ button {
   transition: transform 260ms var(--ease-out);
 }
 
-/* A sheen sweeps across while the engine is actually working. */
-.progress-bar::after {
+/* A sheen sweeps across only while the engine is working, so a stall or failure looks still. */
+.progress-bar[data-running]::after {
   background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.35), transparent);
   transform: translateX(-100%);
   animation: kb-sheen 1.3s linear infinite;
@@ -1082,7 +1120,7 @@ button {
   border-radius: var(--r-md);
   /* Mixed in oklab so a red grade stays red; oklch would rotate the hue toward the surface's. */
   background: color-mix(in oklab, var(--g, var(--surface)) 10%, var(--surface));
-  transition: background-color var(--dur-slow) var(--ease-out);
+  transition: background-color var(--dur) var(--ease-out);
 }
 
 .comment-body {
@@ -1106,7 +1144,7 @@ button {
 }
 
 .comment-lead .gi-solid {
-  animation: kb-pop 240ms var(--ease-out) both;
+  animation: kb-pop var(--dur) var(--ease-out) both;
 }
 
 .comment-detail {
@@ -1324,6 +1362,14 @@ button {
 
   .depth {
     margin-left: auto;
+  }
+
+  .depth span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 
   .stage > .player:first-child {

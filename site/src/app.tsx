@@ -125,7 +125,7 @@ function Home() {
               const outcome =
                 g.result === '½-½' ? 'draw' : !asWhite && !asBlack ? null : (g.result === '1-0') === asWhite ? 'won' : 'lost';
               return (
-                <li key={g.id} style={`--i:${Math.min(i, 12)}`}>
+                <li key={g.id} style={`--i:${Math.min(i, 8)}`}>
                   <a href={reviewHash(g.pgn, asBlack ? 'b' : 'w')}>
                     <span class="game-date">{date.format(g.endedAt)}</span>
                     <span class="game-players">

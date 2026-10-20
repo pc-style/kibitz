@@ -26,6 +26,11 @@ function cacheKey(game: Game, depth: number): string {
   return `kibitz:v1:${depth}:${h.toString(36)}`;
 }
 
+function readCache(key: string): (PositionEval | undefined)[] | null {
+  const cached = localStorage.getItem(key);
+  return cached ? JSON.parse(cached) : null;
+}
+
 export function Review({ pgn, orientation: initialOrientation }: { pgn: string; orientation: 'w' | 'b' }) {
   const parsed = useMemo(() => {
     try {
@@ -52,7 +57,8 @@ export function Review({ pgn, orientation: initialOrientation }: { pgn: string; 
 function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation: 'w' | 'b' }) {
   const total = game.fens.length;
   const [depth, setDepth] = useState(() => Number(localStorage.getItem('kibitz:depth')) || 16);
-  const [evals, setEvals] = useState<(PositionEval | undefined)[]>([]);
+  // Read a saved review synchronously so a revisit renders complete on the first frame.
+  const [evals, setEvals] = useState<(PositionEval | undefined)[]>(() => readCache(cacheKey(game, depth)) ?? []);
   const [failure, setFailure] = useState<string>();
   const [index, setIndex] = useState(0);
   const [orientation, setOrientation] = useState(initialOrientation);
@@ -64,9 +70,9 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
 
   useEffect(() => {
     const key = cacheKey(game, depth);
-    const cached = localStorage.getItem(key);
+    const cached = readCache(key);
     if (cached) {
-      setEvals(JSON.parse(cached));
+      setEvals(cached);
       return;
     }
     const result: (PositionEval | undefined)[] = [];
@@ -103,7 +109,19 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     [complete, scores],
   );
 
-  const go = (i: number) => setIndex(Math.max(0, Math.min(total - 1, i)));
+  // Held arrow keys and quick clicks step faster than the animations can play, so while stepping
+  // is rapid the screen is marked data-rapid and badges, the comment and indicators update instantly.
+  const root = useRef<HTMLDivElement>(null);
+  const lastStep = useRef(0);
+  const settle = useRef(0);
+  const go = (i: number) => {
+    const now = performance.now();
+    root.current?.toggleAttribute('data-rapid', now - lastStep.current < 220);
+    lastStep.current = now;
+    clearTimeout(settle.current);
+    settle.current = window.setTimeout(() => root.current?.removeAttribute('data-rapid'), 260);
+    setIndex(Math.max(0, Math.min(total - 1, i)));
+  };
   const indexRef = useRef(index);
   indexRef.current = index;
 
@@ -131,6 +149,16 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     return out;
   }, [ply, move, evals, index]);
 
+  // One short announcement once stepping pauses, instead of re-reading the comment card on every move.
+  const [announcement, setAnnouncement] = useState('');
+  useEffect(() => {
+    const text = !ply
+      ? 'Starting position'
+      : `${moveName(game, index - 1)}${move ? `, ${GRADE_INFO[move.grade].label.toLowerCase()}${move.best ? `. Best was ${move.best}` : ''}` : ''}`;
+    const timer = setTimeout(() => setAnnouncement(text), 400);
+    return () => clearTimeout(timer);
+  }, [index, move?.grade, move?.best]);
+
   const opening = useMemo(() => {
     if (!openings) return game.headers.Opening;
     let name = game.headers.Opening;
@@ -154,7 +182,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const score = scores[index];
 
   return (
-    <div class="review">
+    <div class="review" ref={root}>
       <header class="topbar">
         <a class="wordmark" href="#" aria-label="Kibitz home">
           kibitz
@@ -219,9 +247,13 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
           names={{ w: player('w').name, b: player('b').name }}
           analysed={analysed}
           total={total}
+          running={!failure}
           onJump={jumpTo}
         />
         <Comment game={game} index={index} move={move} before={scores[index - 1]} after={score} opening={opening} />
+        <p class="visually-hidden" aria-live="polite">
+          {announcement}
+        </p>
         <MoveList game={game} moves={moves} current={index} onSelect={go} />
         <nav class="controls" aria-label="Move navigation">
           <button type="button" onClick={() => go(0)} aria-label="First move" disabled={index === 0}>
@@ -251,9 +283,9 @@ const NavIcon = ({ d }: { d: string }) => (
   </svg>
 );
 
-/** Counts up to a number when it first arrives, so the finished review lands as a moment. */
+/** Counts up from zero when a number first arrives, so the finished review lands as a moment. */
 function useCountUp(target: number | undefined, ms = 750): number | undefined {
-  const [value, setValue] = useState(target);
+  const [value, setValue] = useState(() => (target === undefined || reducedMotion() ? target : 0));
   const key = target === undefined || Number.isNaN(target) ? undefined : target.toFixed(1);
   useEffect(() => {
     if (key === undefined || target === undefined || reducedMotion()) return setValue(target);
@@ -273,14 +305,13 @@ function useCountUp(target: number | undefined, ms = 750): number | undefined {
 const fmt = (x?: number) => (x === undefined || Number.isNaN(x) ? '—' : x.toFixed(1));
 
 function PlayerStrip({ name, elo, accuracy, color }: { name: string; elo?: string; accuracy?: number; color: 'w' | 'b' }) {
-  const shown = useCountUp(accuracy);
   return (
     <div class="player">
       <span class={`player-swatch player-swatch-${color}`} aria-hidden="true" />
       <span class="player-name">{name}</span>
       {elo && elo !== '?' ? <span class="player-elo">{elo}</span> : null}
       <span class="player-accuracy" title="Accuracy">
-        {accuracy !== undefined && !Number.isNaN(accuracy) ? fmt(shown) : ''}
+        {accuracy !== undefined && !Number.isNaN(accuracy) ? fmt(accuracy) : ''}
       </span>
     </div>
   );
@@ -302,7 +333,8 @@ function Accuracy({ name, value, align }: { name: string; value?: number; align:
   return (
     <div class={`accuracy accuracy-${align}`}>
       <span class="summary-label">{name}</span>
-      <strong>{fmt(shown)}</strong>
+      <strong aria-hidden="true">{fmt(shown)}</strong>
+      <span class="visually-hidden">{fmt(value)}</span>
     </div>
   );
 }
@@ -314,9 +346,10 @@ function Summary(props: {
   names: { w: string; b: string };
   analysed: number;
   total: number;
+  running: boolean;
   onJump: (grade: Grade, color: 'w' | 'b') => void;
 }) {
-  const { moves, game, accuracy, names, analysed, total, onJump } = props;
+  const { moves, game, accuracy, names, analysed, total, running, onJump } = props;
   const counts = (grade: Grade, color: 'w' | 'b') => game.plies.filter((p, i) => p.color === color && moves[i]?.grade === grade).length;
 
   return (
@@ -341,6 +374,7 @@ function Summary(props: {
             aria-valuemin={0}
             aria-valuemax={total}
             aria-valuenow={analysed}
+            data-running={running ? '' : undefined}
             style={`--done:${analysed / total}`}
           />
         </div>
@@ -468,7 +502,7 @@ function Comment(props: { game: Game; index: number; move?: MoveReview; before?:
     );
   }
   return (
-    <section class="comment" style={tint} aria-live="polite">
+    <section class="comment" style={tint}>
       <div class="comment-body" key={index}>
         {body}
       </div>
@@ -486,7 +520,7 @@ function MoveList({ game, moves, current, onSelect }: { game: Game; moves: (Move
     const r = row.getBoundingClientRect();
     const b = box.getBoundingClientRect();
     const by = r.top < b.top ? r.top - b.top - 4 : r.bottom > b.bottom ? r.bottom - b.bottom + 4 : 0;
-    if (by) box.scrollBy({ top: by, behavior: reducedMotion() ? 'auto' : 'smooth' });
+    if (by) box.scrollBy({ top: by });
   }, [current]);
 
   const cell = (i: number) => {
