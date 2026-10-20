@@ -12,9 +12,9 @@ export interface GameSummary {
   pgn: string;
 }
 
-async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (res.status === 404) throw new Error('No player with that username.');
+async function getJson<T>(url: string, notFound: string): Promise<T> {
+  const res = await fetch(url);
+  if (res.status === 404) throw new Error(notFound);
   if (!res.ok) throw new Error(`The games API answered ${res.status}. Try again in a minute.`);
   return res.json() as Promise<T>;
 }
@@ -33,10 +33,14 @@ const chesscomResult = (g: ChesscomGame) => (g.white.result === 'win' ? '1-0' : 
 
 async function chesscomGames(username: string): Promise<GameSummary[]> {
   const base = `https://api.chess.com/pub/player/${encodeURIComponent(username.toLowerCase())}/games`;
-  const { archives } = await getJson<{ archives: string[] }>(`${base}/archives`);
-  const months = await Promise.all(archives.slice(-2).map((url) => getJson<{ games: ChesscomGame[] }>(url)));
+  const { archives } = await getJson<{ archives: string[] }>(`${base}/archives`, 'No player with that username.');
+  // chess.com sometimes lists a month whose archive then errors (seen for the current month), so skip failed months.
+  const months = await Promise.allSettled(archives.slice(-3).map((url) => getJson<{ games: ChesscomGame[] }>(url, 'Archive missing.')));
+  if (months.length && months.every((m) => m.status === 'rejected')) {
+    throw new Error("chess.com's game archive isn't answering right now. Try again in a minute.");
+  }
   return months
-    .flatMap((m) => m.games)
+    .flatMap((m) => (m.status === 'fulfilled' ? m.value.games : []))
     .filter((g) => g.rules === 'chess' && g.pgn)
     .sort((a, b) => b.end_time - a.end_time)
     .slice(0, 40)

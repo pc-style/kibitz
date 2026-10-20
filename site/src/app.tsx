@@ -94,7 +94,7 @@ function Home() {
             {error}
           </p>
         ) : null}
-        {games && !games.length ? <p class="muted">No finished standard games in the last two months.</p> : null}
+        {games && !games.length ? <p class="muted">No recent finished standard games.</p> : null}
         {games?.length ? (
           <ul class="game-list">
             {games.map((g) => {
