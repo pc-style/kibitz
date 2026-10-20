@@ -1,0 +1,31 @@
+.kibitz-review {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483000;
+  max-width: 320px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid oklch(0.84 0.15 88);
+  border-radius: 4px;
+  background: oklch(0.84 0.15 88);
+  color: oklch(0.22 0.03 88);
+  font: 700 15px/1.2 'Helvetica Neue', Arial, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 6px 18px oklch(0 0 0 / 0.35);
+  transition: background-color 160ms ease-out;
+}
+
+.kibitz-review:hover {
+  background: oklch(0.89 0.13 88);
+}
+
+.kibitz-review:focus-visible {
+  outline: 2px solid oklch(0.94 0.008 110);
+  outline-offset: 2px;
+}
+
+.kibitz-review:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
