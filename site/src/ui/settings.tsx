@@ -14,9 +14,10 @@ export function SettingsButton() {
   return (
     <>
       <button type="button" class="icon-button" popovertarget="settings" aria-label="Settings" title="Settings">
+        {/* Eight teeth and the hole, all centred on 12,12 so the gear sits dead centre in the button. */}
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <path
-            d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM19.4 13.5l1.6 1.2-1.8 3.1-1.9-.6a7.6 7.6 0 0 1-2 1.2L15 20.4h-3.6l-.4-2a7.6 7.6 0 0 1-2-1.2l-1.9.6-1.8-3.1 1.6-1.2a7.4 7.4 0 0 1 0-2.4L5.3 9.9l1.8-3.1 1.9.6a7.6 7.6 0 0 1 2-1.2l.4-2h3.6l.4 2a7.6 7.6 0 0 1 2 1.2l1.9-.6 1.8 3.1-1.6 1.2a7.4 7.4 0 0 1 0 2.4z"
+            d="M10.32 5.72L10.62 3.31L13.38 3.31L13.68 5.72L15.25 6.37L17.17 4.88L19.12 6.83L17.63 8.75L18.28 10.32L20.69 10.62L20.69 13.38L18.28 13.68L17.63 15.25L19.12 17.17L17.17 19.12L15.25 17.63L13.68 18.28L13.38 20.69L10.62 20.69L10.32 18.28L8.75 17.63L6.83 19.12L4.88 17.17L6.37 15.25L5.72 13.68L3.31 13.38L3.31 10.62L5.72 10.32L6.37 8.75L4.88 6.83L6.83 4.88L8.75 6.37ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
             fill="none"
             stroke="currentColor"
             stroke-width="1.7"
