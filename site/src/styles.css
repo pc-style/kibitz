@@ -2116,8 +2116,22 @@ html[data-motion='off'] *::after {
   animation-iteration-count: 1 !important;
 }
 
-/* Phones: the bar keeps the logo, the two live sections and settings; Soon items and the wordmark go. */
+/* Phones: the bar keeps the logo, the two live sections and settings; Soon items and the wordmark go.
+   The key-move button gets its own row so its label never clips. */
 @media (max-width: 560px) {
+  .controls {
+    flex-wrap: wrap;
+  }
+
+  .controls button {
+    flex: 1;
+  }
+
+  .controls .controls-next {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
   .topnav-soon,
   .topbar .wordmark {
     display: none;
