@@ -1,0 +1,237 @@
+/* Analysis board: the review's layout (.review, .stage, .panel) with an engine card in place of the coach. */
+
+/* No player strips or graph around the board, so it can take more of the height. Phones keep the review's full-width board. */
+@media (min-width: 901px) {
+  .analysis {
+    --board: min(calc(100svh - 150px), calc(100vw - 498px - var(--bar)));
+  }
+}
+
+.analysis .topbar-game {
+  font: inherit;
+}
+
+.analysis .panel {
+  height: calc(var(--board) + 30px);
+  min-height: 540px;
+}
+
+.analysis-off .evalbar {
+  opacity: 0.4;
+}
+
+.analysis-notice {
+  font-size: var(--t-sm);
+}
+
+/* Engine card: evaluation, depth and the switch, then the top lines. */
+/* minmax(0, …) columns let long lines end in an ellipsis instead of widening the panel. */
+.analysis-engine,
+.analysis-lines {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.analysis-engine {
+  display: grid;
+  gap: calc(var(--space) * 2.5);
+  padding: calc(var(--space) * 3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.analysis-engine-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+}
+
+.analysis-eval {
+  min-width: 4.4rem;
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  font: 700 var(--t-md) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+/* Who the evaluation favours, in the board's own day and night colors (like the accuracy chips). */
+.analysis-eval-w {
+  background: var(--day);
+  color: var(--night);
+}
+
+.analysis-eval-b {
+  background: var(--night);
+  color: var(--day);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.analysis-depth {
+  color: var(--muted);
+  font: 400 var(--t-xs) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.analysis-switch.toggle {
+  gap: calc(var(--space) * 2.5);
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.analysis-lines {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Rows keep their height while lines arrive, so the card doesn't jump. */
+.analysis-lines li {
+  min-height: 34px;
+}
+
+.analysis-line {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2.5);
+  width: 100%;
+  min-height: 34px;
+  padding: 0 calc(var(--space) * 2) 0 calc(var(--space) * 1);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.analysis-line:hover {
+  background: var(--surface-hover);
+}
+
+.analysis-line-score.analysis-eval {
+  flex: none;
+  min-width: 3.6rem;
+  padding: 4px 5px;
+  font: 600 var(--t-xs) / 1 var(--font-mono);
+}
+
+.analysis-line-moves {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-line-moves strong {
+  color: var(--fg);
+}
+
+.analysis-hint,
+.analysis-over {
+  font-size: var(--t-sm);
+}
+
+.analysis-hint {
+  color: var(--muted);
+}
+
+.analysis-over {
+  font-weight: 600;
+}
+
+.analysis .move {
+  padding-left: calc(var(--space) * 2);
+}
+
+.analysis-moves-empty {
+  display: grid;
+  place-items: center;
+  padding: calc(var(--space) * 4);
+  color: var(--muted);
+  font-size: var(--t-sm);
+  text-align: center;
+}
+
+.analysis .controls button {
+  flex: 1;
+}
+
+/* Position tools: FEN in and out, PGN, review, reset. */
+.analysis-tools {
+  display: grid;
+  gap: calc(var(--space) * 2.5);
+  padding-top: calc(var(--space) * 3);
+  border-top: 1px solid var(--border);
+}
+
+.analysis-fen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: calc(var(--space) * 2);
+}
+
+.analysis-fen input {
+  font: 400 var(--t-xs) / 1.4 var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+/* iOS Safari zooms into fields under 16px; see the .field rules in styles.css. */
+@media (pointer: coarse) {
+  .analysis-fen input {
+    font-size: 16px;
+  }
+}
+
+.analysis-fen .button {
+  min-width: 4.6rem;
+}
+
+.analysis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+}
+
+.analysis-actions .button {
+  min-height: 36px;
+  padding: 0 calc(var(--space) * 3);
+  font-size: var(--t-sm);
+}
+
+/* Phones: one column. Board, then the engine, the controls, the moves and the tools. */
+@media (max-width: 900px) {
+  .analysis-notice {
+    order: 1;
+  }
+
+  .analysis-engine {
+    order: 3;
+  }
+
+  .analysis .controls {
+    order: 4;
+  }
+
+  .analysis .moves {
+    order: 5;
+    max-height: 240px;
+  }
+
+  .analysis-tools {
+    order: 6;
+    padding: calc(var(--space) * 3);
+    border: 0;
+    border-radius: var(--r-md);
+    background: var(--surface);
+  }
+
+  .analysis .progress {
+    order: 7;
+  }
+}
