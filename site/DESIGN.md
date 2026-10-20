@@ -1,14 +1,17 @@
 # Kibitz design
 
 ## Discovery
-- **Artifact:** a single-purpose analysis tool (home page plus a review screen). Not a marketing site.
-- **Audience:** club players who want chess.com-style game review without paying for it; the first users are developers who prefer open tools.
-- **Primary action:** get a game in front of the review in one step (username list, pasted PGN, or the chess.com extension).
+- **Artifact:** a free chess site in sections: Learn and Analysis now, Play and Puzzles listed as Soon in the top bar until they exist. Not a marketing site.
+- **Audience:** club players who want chess.com-style game review without paying for it, and people who have never played and want to learn from zero.
+- **Primary actions:** the home page has two doors. Learn opens the course map; Analysis gets a game in front of the review in one step (username list, pasted PGN, or the chess.com extension) or opens the free board.
 - **Adjectives:** studious, candid, quick, analog. **Essence:** annotated scoresheet, nocturnal.
 
 ## Aesthetic and signature
 Close to chess.com's Game Review on purpose, so players feel at home: green and cream board, warm grays, a green call to action, solid round grade icons, and a coach that talks you through the game. Kibitz's own layer on top: Informator glyphs in mono, the ink-area eval graph, and real chess pieces (the board's own set) for the logo, the coach, and player tiles instead of illustrations.
 **Signature move:** the eval graph under the board. White's winning chances are drawn as a solid ink area, and notable moves are marked where they happened, so the turning points read at a glance and a click jumps there.
+
+## Learn
+One path from how the pieces move to forks, pins and basic mates (`src/learn/types.ts` defines the format; `pnpm check:course` proves every position and answer with chess.js and Stockfish). A lesson is a short explainer beside a board that plays the idea on a loop, then hands-on tasks. The knight coach from the review speaks in lessons too, so both sections feel like one tutor. Mistakes and moves over par turn into 1-3 stars, kept in the browser only. The course ends with a game against a deliberately weak bot that opens in the review.
 
 ## Typography
 - Display and UI: Schibsted Grotesk (400/500/700).
@@ -16,11 +19,12 @@ Close to chess.com's Game Review on purpose, so players feel at home: green and 
 - Scale: 1.2 ratio on a 15px base (12.5, 14, 15, 18, 21.6, fluid display).
 
 ## Themes
-Four themes share one set of roles (`[data-theme]` on `<html>`, set before first paint from localStorage, falling back to the system light/dark preference):
+Eight themes share one set of roles (`[data-theme]` on `<html>`, set before first paint from localStorage, falling back to the system light/dark preference):
 - **Classic** (default): chess.com-style warm grays, green action, green and cream board. Replaced the earlier Felt theme; a saved "felt" preference maps to Classic.
 - **Walnut:** warm dark brown, copper accent, maple and walnut board.
 - **Midnight:** blue slate, cyan accent, blue board.
 - **Paper:** light, ink-blue accent, gray-blue board. Grade colors darken so they stay readable as text on white.
+- **Marine, Coral, Graphite, Newsprint:** added with the settings panel; their values live in styles.css.
 
 Each swatch carries its own `data-theme`, so it previews that theme's board without duplicated color values. `--page-*` captures the page's colors for rings drawn around swatches.
 
