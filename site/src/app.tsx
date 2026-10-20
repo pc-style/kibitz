@@ -1,12 +1,18 @@
+import type { Key } from '@lichess-org/chessground/types';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fetchGames, reviewHash, type GameSummary, type Site } from './sources';
 import { parseGame } from './game';
 import { GRADES } from './review';
 import { Board } from './ui/board';
-import { GRADE_INFO, GradeIcon, badgeSvg } from './ui/grades';
 import { Piece } from './ui/piece';
+import { GRADE_INFO, GradeIcon, badgeSvg } from './ui/grades';
+import { CourseMap } from './learn/map';
+import { LessonPage } from './learn/lesson';
+import { LESSONS } from './learn/course';
+import { useStars } from './learn/progress';
+import { AnalysisBoard } from './ui/analysis';
+import { TopNav } from './ui/nav';
 import { Review } from './ui/review';
-import { SettingsButton } from './ui/settings';
 import { reducedMotion } from './ui/theme';
 
 const OPERA_GAME = `[Event "Paris"]
@@ -19,9 +25,29 @@ const OPERA_GAME = `[Event "Paris"]
 1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7 8. Nc3 c6 9. Bg5 b5
 10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7 14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8# 1-0`;
 
-function readHash() {
-  const params = new URLSearchParams(location.hash.slice(1));
-  return { pgn: params.get('pgn'), orientation: params.get('o') === 'b' ? ('b' as const) : ('w' as const) };
+type Route =
+  | { page: 'home' }
+  | { page: 'analysis' }
+  | { page: 'board'; fen?: string }
+  | { page: 'learn' }
+  | { page: 'lesson'; id: string }
+  | { page: 'review'; pgn: string; orientation: 'w' | 'b' };
+
+/** Pages live at #/learn, #/learn/<lesson>, #/analysis and #/board?fen=; reviews keep their #pgn= links. */
+function readHash(): Route {
+  const hash = location.hash.slice(1);
+  if (hash.startsWith('/')) {
+    const [path, query] = hash.split('?');
+    const [section, id] = path.split('/').filter(Boolean);
+    if (section === 'learn') return id ? { page: 'lesson', id } : { page: 'learn' };
+    if (section === 'analysis') return { page: 'analysis' };
+    if (section === 'board') return { page: 'board', fen: new URLSearchParams(query).get('fen') ?? undefined };
+    return { page: 'home' };
+  }
+  const params = new URLSearchParams(hash);
+  const pgn = params.get('pgn');
+  if (pgn) return { page: 'review', pgn, orientation: params.get('o') === 'b' ? 'b' : 'w' };
+  return { page: 'home' };
 }
 
 export function App() {
@@ -39,7 +65,106 @@ export function App() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
-  return route.pgn ? <Review key={route.pgn} pgn={route.pgn} orientation={route.orientation} /> : <Home />;
+  switch (route.page) {
+    case 'review':
+      return <Review key={route.pgn} pgn={route.pgn} orientation={route.orientation} />;
+    case 'analysis':
+      return <Analysis />;
+    case 'board':
+      return <AnalysisBoard key={route.fen} fen={route.fen} />;
+    case 'learn':
+      return <CourseMap />;
+    case 'lesson':
+      return <LessonPage key={route.id} id={route.id} />;
+    default:
+      return <Home />;
+  }
+}
+
+/** The way in: two doors, Learn and Analysis. */
+function Home() {
+  const stars = useStars();
+  const done = LESSONS.filter((l) => stars[l.id]).length;
+  const next = LESSONS.find((l) => !stars[l.id]);
+  const knightDots = useMemo(
+    () => ['c3', 'e3', 'b4', 'f4', 'b6', 'f6', 'c7', 'e7'].map((sq) => ({ orig: sq as Key, brush: 'green' })),
+    [],
+  );
+  const opera = useOpera();
+
+  return (
+    <main class="home home-doors">
+      <TopNav />
+      <header class="home-head">
+        <h1>
+          <span>Learn chess.</span> <span>Review every game.</span>
+        </h1>
+        <p class="home-lede">
+          Start from how the pieces move, or get every move of your last game graded. Free, no account, and it all runs
+          in your browser.
+        </p>
+      </header>
+
+      <a class="door" href="#/learn">
+        <div class="door-board">
+          <Board fen="8/8/8/8/3N4/8/8/8 w - - 0 1" orientation="white" shapes={knightDots} />
+        </div>
+        <div class="door-body">
+          <h2>Learn</h2>
+          <p>
+            From how the pieces move to your first checkmate, forks and pins. Short lessons you play on the board, then a
+            game against a gentle bot.
+          </p>
+          <span class="door-cta">
+            {done === 0 ? 'Start the first lesson' : next ? `Continue: ${next.title}` : 'Play the final game'} →
+          </span>
+          {done ? (
+            <span class="door-meta">
+              {done} of {LESSONS.length} lessons done
+            </span>
+          ) : null}
+        </div>
+      </a>
+
+      <a class="door" href="#/analysis">
+        <div class="door-board">
+          <Board fen={opera.ply.fenAfter} orientation="white" lastMove={[opera.ply.from, opera.ply.to]} shapes={opera.shapes} />
+        </div>
+        <div class="door-body">
+          <h2>Analysis</h2>
+          <p>
+            Every move of your game graded, from brilliant to blunder, with the move you should have played. Or open a
+            free board with Stockfish.
+          </p>
+          <span class="door-cta">Review a game →</span>
+        </div>
+      </a>
+
+      <Footer />
+    </main>
+  );
+}
+
+function Footer() {
+  return (
+    <footer class="home-foot">
+      <p>
+        On chess.com? The <a href="/kibitz-extension.zip">Kibitz extension</a> puts a <strong>Free review</strong> button on
+        every finished game and opens it here. Unzip it, open <code>chrome://extensions</code>, turn on Developer mode, and
+        choose Load unpacked.
+      </p>
+      <p>Grades follow chess.com's categories; accuracy uses lichess's published formula.</p>
+    </footer>
+  );
+}
+
+/** Morphy's queen sacrifice, 16. Qb8+, as the review shows it. */
+function useOpera() {
+  return useMemo(() => {
+    const game = parseGame(OPERA_GAME);
+    const ply = game.plies.find((p) => p.san === 'Qb8+')!;
+    return { ply, shapes: [{ orig: ply.to, customSvg: { html: badgeSvg('brilliant') } }] };
+  }, []);
 }
 
 const SITES: { id: Site; label: string }[] = [
@@ -47,7 +172,7 @@ const SITES: { id: Site; label: string }[] = [
   { id: 'lichess', label: 'lichess' },
 ];
 
-function Home() {
+function Analysis() {
   const [site, setSite] = useState<Site>(() => (localStorage.getItem('kibitz:site') as Site) || 'chesscom');
   const [username, setUsername] = useState(() => localStorage.getItem('kibitz:user') ?? '');
   const [games, setGames] = useState<GameSummary[] | null>(null);
@@ -75,22 +200,12 @@ function Home() {
 
   const me = username.trim().toLowerCase();
   const date = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
-  // The hero shows a real moment from a real review: Morphy's queen sacrifice, 16. Qb8+.
-  const opera = useMemo(() => {
-    const game = parseGame(OPERA_GAME);
-    const ply = game.plies.find((p) => p.san === 'Qb8+')!;
-    return { ply, shapes: [{ orig: ply.to, customSvg: { html: badgeSvg('brilliant') } }] };
-  }, []);
+  // The hero shows a real moment from a real review.
+  const opera = useOpera();
 
   return (
     <main class="home">
-      <div class="home-top">
-        <p class="logo">
-          <Piece role="knight" color="white" class="logo-mark" />
-          <span class="wordmark">kibitz</span>
-        </p>
-        <SettingsButton />
-      </div>
+      <TopNav current="analysis" />
       <header class="home-head">
         <h1>
           <span>Every move graded.</span> <span>No paywall, no daily limit.</span>
@@ -207,14 +322,15 @@ function Home() {
         </form>
       </section>
 
-      <footer class="home-foot">
-        <p>
-          On chess.com? The <a href="/kibitz-extension.zip">Kibitz extension</a> puts a <strong>Free review</strong> button on
-          every finished game and opens it here. Unzip it, open <code>chrome://extensions</code>, turn on Developer mode, and
-          choose Load unpacked.
-        </p>
-        <p>Grades follow chess.com's categories; accuracy uses lichess's published formula.</p>
-      </footer>
+      <section class="home-card home-board-card" aria-labelledby="by-board">
+        <h2 id="by-board">Analysis board</h2>
+        <p class="muted">Play out any idea or paste a position, with Stockfish's best lines as you go.</p>
+        <a class="button" href="#/board">
+          Open the board
+        </a>
+      </section>
+
+      <Footer />
     </main>
   );
 }

@@ -10,6 +10,11 @@ export interface PositionEval {
   lines: Line[];
 }
 
+/** A finished search: the lines it reached and the move the engine would play (none when the game is over). */
+export interface SearchResult extends PositionEval {
+  best?: string;
+}
+
 const ENGINE_URL = '/engine/stockfish-19-lite-single.js';
 
 function parseInfo(line: string): { depth: number; multipv: number; line: Line } | null {
@@ -48,25 +53,35 @@ class Engine {
     });
   }
 
-  async init() {
+  async init(multipv = 2) {
     await this.request(['uci'], (line, done) => line === 'uciok' && done());
     await this.request(
-      ['setoption name MultiPV value 2', 'setoption name Hash value 32', 'isready'],
+      [`setoption name MultiPV value ${multipv}`, 'setoption name Hash value 32', 'isready'],
       (line, done) => line === 'readyok' && done(),
     );
   }
 
-  async analyse(fen: string, depth: number): Promise<PositionEval> {
+  async analyse(fen: string, depth: number, onUpdate?: (ev: PositionEval) => void): Promise<SearchResult> {
     const lines: Line[] = [];
     let reached = 0;
+    let best: string | undefined;
     await this.request([`position fen ${fen}`, `go depth ${depth}`], (line, done) => {
-      if (line.startsWith('bestmove')) return done();
+      if (line.startsWith('bestmove')) {
+        best = line.split(' ')[1];
+        return done();
+      }
       const info = parseInfo(line);
       if (!info) return;
       reached = Math.max(reached, info.depth);
       lines[info.multipv - 1] = info.line;
+      onUpdate?.({ depth: reached, lines: lines.filter(Boolean) });
     });
-    return { depth: reached, lines: lines.filter(Boolean) };
+    return { depth: reached, lines: lines.filter(Boolean), best: best && best !== '(none)' ? best : undefined };
+  }
+
+  /** Ends the current search early; it still resolves with what it found. */
+  stop() {
+    this.worker.postMessage('stop');
   }
 
   terminate() {
@@ -110,5 +125,43 @@ export async function analysePositions(
     await Promise.all(Array.from({ length: size }, run));
   } catch (err) {
     if (!signal.aborted) throw err;
+  }
+}
+
+/**
+ * One engine kept warm for an interactive board (analysis, lessons, the practice bot).
+ * Each call to analyse() stops the previous search, so only the latest position gets an answer.
+ */
+export class LiveEngine {
+  private engine = new Engine();
+  private ready: Promise<void>;
+  private current: Promise<unknown> = Promise.resolve();
+  private token = 0;
+
+  constructor(multipv = 1) {
+    this.ready = this.engine.init(multipv);
+  }
+
+  /** Searches fen to depth, reporting each deeper result. Resolves null if a later call or stop() replaced it. */
+  async analyse(fen: string, depth: number, onUpdate?: (ev: PositionEval) => void): Promise<SearchResult | null> {
+    const token = ++this.token;
+    this.engine.stop();
+    await this.ready;
+    await this.current.catch(() => {});
+    if (token !== this.token) return null;
+    const run = this.engine.analyse(fen, depth, (ev) => token === this.token && onUpdate?.(ev));
+    this.current = run;
+    const result = await run;
+    return token === this.token ? result : null;
+  }
+
+  stop() {
+    this.token++;
+    this.engine.stop();
+  }
+
+  terminate() {
+    this.token++;
+    this.engine.terminate();
   }
 }

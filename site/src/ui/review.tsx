@@ -11,7 +11,7 @@ import { EvalGraph } from './graph';
 import { GRADE_INFO, GradeIcon, NOTABLE, badgeSvg } from './grades';
 import { useSettings } from '../settings';
 import { Piece } from './piece';
-import { SettingsButton } from './settings';
+import { TopNav } from './nav';
 import { reducedMotion } from './theme';
 
 /** Grades where Retry is offered: the moves worth finding again. */
@@ -268,18 +268,13 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
 
   return (
     <div class={`review ${settings.evalBar ? '' : 'review-no-bar'}`} ref={root}>
-      <header class="topbar">
-        <a class="logo" href="#" aria-label="Kibitz home">
-          <Piece role="knight" color="white" class="logo-mark" />
-          <span class="wordmark">kibitz</span>
-        </a>
+      <TopNav current="analysis">
         <p class="topbar-game">
           {names.w} vs {names.b}
           {h.Result && h.Result !== '*' ? ` · ${h.Result.replace('1/2-1/2', '½-½')}` : ''}
           {h.Date && !h.Date.includes('?') ? ` · ${h.Date.replaceAll('.', '-')}` : ''}
         </p>
-        <SettingsButton />
-      </header>
+      </TopNav>
 
       <section class="stage">
         <PlayerStrip {...player(top)} color={top} />

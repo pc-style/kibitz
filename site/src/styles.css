@@ -715,6 +715,7 @@ textarea {
     'top top'
     'head preview'
     'user pgn'
+    'board board'
     'foot foot';
   align-items: start;
   gap: calc(var(--space) * 8) calc(var(--space) * 10);
@@ -723,12 +724,102 @@ textarea {
   padding: calc(var(--space) * 10) calc(var(--space) * 8) calc(var(--space) * 14);
 }
 
-.home-top {
+.home > .topbar {
   grid-area: top;
-  display: flex;
+}
+
+/* The way in: a headline, then one door per section. */
+.home-doors {
+  grid-template-areas:
+    'top top'
+    'head head'
+    'learn analysis'
+    'foot foot';
+  align-items: stretch;
+}
+
+.home-doors .home-head {
+  justify-items: start;
+}
+
+.home-doors .home-head h1 {
+  font-size: clamp(2.2rem, 1.3rem + 3.4vw, 4rem);
+}
+
+.home-doors .home-lede {
+  max-width: 48ch;
+}
+
+.door {
+  display: grid;
+  grid-template-columns: minmax(140px, 40%) minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  min-height: 32px;
+  gap: calc(var(--space) * 6);
+  padding: calc(var(--space) * 5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
+}
+
+.door:first-of-type {
+  grid-area: learn;
+}
+
+.door:last-of-type {
+  grid-area: analysis;
+}
+
+.door:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.door-board {
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  box-shadow: var(--board-shadow);
+  pointer-events: none;
+}
+
+.door-body {
+  display: grid;
+  justify-items: start;
+  gap: calc(var(--space) * 3);
+}
+
+.door-body h2 {
+  font: 700 var(--t-lg) / 1.1 var(--font-sans);
+  letter-spacing: -0.02em;
+}
+
+.door-body p {
+  color: var(--muted);
+}
+
+.door-cta {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.door-meta {
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+.home-board-card {
+  grid-area: board;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.home-board-card h2 {
+  grid-column: 1 / -1;
 }
 
 .home-head {
@@ -978,6 +1069,49 @@ textarea {
   align-items: center;
   gap: calc(var(--space) * 5);
   min-height: 44px;
+}
+
+/* Sections. Play and Puzzles are listed but not built yet. */
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 1);
+}
+
+.topnav a,
+.topnav-soon {
+  padding: calc(var(--space) * 1.5) calc(var(--space) * 3);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.topnav a:hover {
+  color: var(--fg);
+  background: var(--surface-2);
+}
+
+.topnav a[aria-current='page'] {
+  color: var(--fg);
+  background: var(--surface);
+}
+
+.topnav-soon {
+  color: color-mix(in oklab, var(--muted) 60%, transparent);
+  cursor: default;
+}
+
+.topnav-soon small {
+  margin-left: 2px;
+  font: 600 0.62rem / 1 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.topbar-gap {
+  flex: 1;
 }
 
 .topbar-game {
@@ -1848,8 +1982,18 @@ textarea {
 @media (max-width: 900px) {
   .home {
     grid-template-columns: 1fr;
-    grid-template-areas: 'top' 'head' 'preview' 'user' 'pgn' 'foot';
+    grid-template-areas: 'top' 'head' 'preview' 'user' 'pgn' 'board' 'foot';
     padding: calc(var(--space) * 6) calc(var(--space) * 4) calc(var(--space) * 10);
+  }
+
+  .home-doors {
+    grid-template-areas: 'top' 'head' 'learn' 'analysis' 'foot';
+  }
+
+  .door {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: calc(var(--space) * 4);
+    padding: calc(var(--space) * 4);
   }
 
   .home-head {
@@ -1970,4 +2114,16 @@ html[data-motion='off'] *::after {
   animation-duration: 0ms !important;
   animation-delay: 0ms !important;
   animation-iteration-count: 1 !important;
+}
+
+/* Phones: the bar keeps the logo, the two live sections and settings; Soon items and the wordmark go. */
+@media (max-width: 560px) {
+  .topnav-soon,
+  .topbar .wordmark {
+    display: none;
+  }
+
+  .topbar {
+    gap: calc(var(--space) * 2);
+  }
 }
