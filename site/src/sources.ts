@@ -1,3 +1,5 @@
+import { DEFAULT_POSITION } from 'chess.js';
+
 export type Site = 'chesscom' | 'lichess';
 
 export interface GameSummary {
@@ -95,6 +97,9 @@ async function lichessGames(username: string): Promise<GameSummary[]> {
 }
 
 export const fetchGames = (site: Site, username: string) => (site === 'chesscom' ? chesscomGames(username) : lichessGames(username));
+
+/** Analysis board link for a position. Spaces become + (read back as spaces) so the FEN stays legible. */
+export const boardHash = (fen: string) => (fen === DEFAULT_POSITION ? '#/board' : `#/board?fen=${fen.replaceAll(' ', '+')}`);
 
 /** Review link for a PGN. Clock and eval comments are dropped to keep the link short. */
 export function reviewHash(pgn: string, orientation: 'w' | 'b' = 'w'): string {

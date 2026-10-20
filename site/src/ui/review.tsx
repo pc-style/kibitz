@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analysePositions, type PositionEval } from '../engine';
 import { explainMove, moveName, summarizeGame } from '../explain';
 import { epd, parseGame, type Game } from '../game';
+import { boardHash } from '../sources';
 import { GRADES, PHASES, gameAccuracy, lineWin, playerStats, reviewGame, type Grade, type MoveReview, type Score } from '../review';
 import { Board, type Movable } from './board';
 import { EvalGraph } from './graph';
@@ -337,6 +338,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
               before={scores[index - 1]}
               after={score}
               opening={opening}
+              boardFen={view.fen}
               retry={retry}
               showBest={showBest}
               canRetry={canRetry}
@@ -385,7 +387,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   );
 }
 
-const NavIcon = ({ d, stroke }: { d: string; stroke?: boolean }) => (
+export const NavIcon = ({ d, stroke }: { d: string; stroke?: boolean }) => (
   <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
     <path
       d={d}
@@ -434,7 +436,7 @@ function PlayerStrip({ name, elo, accuracy, color }: { name: string; elo?: strin
   );
 }
 
-function EvalBar({ score, orientation }: { score?: Score; orientation: 'w' | 'b' }) {
+export function EvalBar({ score, orientation }: { score?: Score; orientation: 'w' | 'b' }) {
   const white = score?.whiteWin ?? 50;
   return (
     <div class={`evalbar ${orientation === 'b' ? 'evalbar-flipped' : ''}`} aria-label={score ? `Evaluation ${score.label}` : 'Evaluation pending'}>
@@ -610,13 +612,15 @@ function Coach(props: {
   before?: Score;
   after?: Score;
   opening?: string;
+  /** The position on the board, for Open on board. */
+  boardFen: string;
   retry: Retry | null;
   showBest: boolean;
   canRetry: boolean;
   onBest: () => void;
   onRetry: (status: Retry['status'] | null) => void;
 }) {
-  const { game, index, move, evals, before, after, opening, retry, showBest, canRetry, onBest, onRetry } = props;
+  const { game, index, move, evals, before, after, opening, boardFen, retry, showBest, canRetry, onBest, onRetry } = props;
   const ply = index > 0 ? game.plies[index - 1] : undefined;
   let grade: Grade | undefined = move?.grade;
   let lead: string;
@@ -722,7 +726,14 @@ function Coach(props: {
           </p>
         ) : null}
       </div>
-      {actions ? <div class="coach-actions">{actions}</div> : null}
+      <div class="coach-actions">
+        {actions}
+        {retry ? null : (
+          <a class="button" href={boardHash(boardFen)} title="Explore this position with Stockfish">
+            Open on board
+          </a>
+        )}
+      </div>
     </section>
   );
 }
