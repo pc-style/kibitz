@@ -2,14 +2,15 @@ import type { ComponentChildren } from 'preact';
 import { Piece } from './piece';
 import { SettingsButton } from './settings';
 
-export type Section = 'learn' | 'analysis';
+export type Section = 'learn' | 'analysis' | 'play';
 
 const LINKS: { id: Section; label: string; href: string }[] = [
   { id: 'learn', label: 'Learn', href: '#/learn' },
+  { id: 'play', label: 'Play', href: '#/play' },
   { id: 'analysis', label: 'Analysis', href: '#/analysis' },
 ];
 
-const SOON = ['Play', 'Puzzles'];
+const SOON = ['Puzzles'];
 
 /** The bar on every page: logo, sections, anything page-specific (a game's title), settings. */
 export function TopNav({ current, children }: { current?: Section; children?: ComponentChildren }) {

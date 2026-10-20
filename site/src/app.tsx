@@ -14,6 +14,7 @@ import { AnalysisBoard } from './ui/analysis';
 import { TopNav } from './ui/nav';
 import { Review } from './ui/review';
 import { reducedMotion } from './ui/theme';
+import { PlayPage } from './play/page';
 
 const OPERA_GAME = `[Event "Paris"]
 [Site "Paris FRA"]
@@ -30,6 +31,7 @@ type Route =
   | { page: 'analysis' }
   | { page: 'board'; fen?: string }
   | { page: 'learn' }
+  | { page: 'play' }
   | { page: 'lesson'; id: string }
   | { page: 'review'; pgn: string; orientation: 'w' | 'b' };
 
@@ -40,6 +42,7 @@ function readHash(): Route {
     const [path, query] = hash.split('?');
     const [section, id] = path.split('/').filter(Boolean);
     if (section === 'learn') return id ? { page: 'lesson', id } : { page: 'learn' };
+    if (section === 'play') return { page: 'play' };
     if (section === 'analysis') return { page: 'analysis' };
     if (section === 'board') return { page: 'board', fen: new URLSearchParams(query).get('fen') ?? undefined };
     return { page: 'home' };
@@ -74,6 +77,8 @@ export function App() {
       return <AnalysisBoard key={route.fen} fen={route.fen} />;
     case 'learn':
       return <CourseMap />;
+    case 'play':
+      return <PlayPage />;
     case 'lesson':
       return <LessonPage key={route.id} id={route.id} />;
     default:
@@ -81,7 +86,7 @@ export function App() {
   }
 }
 
-/** The way in: two doors, Learn and Analysis. */
+/** The way in: Learn, Analysis, and a game against a bot. */
 function Home() {
   const stars = useStars();
   const done = LESSONS.filter((l) => stars[l.id]).length;
@@ -94,10 +99,10 @@ function Home() {
       <TopNav />
       <header class="home-head">
         <h1>
-          <span>Learn chess.</span> <span>Review every game.</span>
+          <span>Learn. Play.</span> <span>Review every game.</span>
         </h1>
         <p class="home-lede">
-          Start from how the pieces move, or get every move of your last game graded. Free, no account, and it all runs
+          Learn how the pieces move, challenge a bot, or get every move of your last game graded. Free, no account, and it all runs
           in your browser.
         </p>
       </header>
@@ -123,7 +128,7 @@ function Home() {
         </div>
       </a>
 
-      <a class="door" href="#/analysis">
+      <a class="door door-analysis" href="#/analysis">
         <div class="door-board">
           <Board fen={opera.ply.fenAfter} orientation="white" lastMove={[opera.ply.from, opera.ply.to]} shapes={opera.shapes} coordinates={false} />
         </div>
@@ -134,6 +139,15 @@ function Home() {
             free board with Stockfish.
           </p>
           <span class="door-cta">Review a game →</span>
+        </div>
+      </a>
+
+      <a class="door door-play" href="#/play">
+        <Piece role="king" color="black" class="door-opponent" />
+        <div class="door-body">
+          <h2>Play</h2>
+          <p>Five opponents, from a forgiving first game to a Stockfish challenge. No clock, with hints and takebacks whenever you need them.</p>
+          <span class="door-cta">Choose an opponent →</span>
         </div>
       </a>
 

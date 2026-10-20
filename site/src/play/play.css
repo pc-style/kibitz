@@ -1,0 +1,70 @@
+/* The board stays central; opponent choice and the scoresheet share its right side. */
+.play-page {
+  display: grid;
+  grid-template-columns: minmax(0, 600px) minmax(320px, 400px);
+  align-items: start;
+  justify-content: center;
+  gap: 24px 32px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.play-stage { min-width: 0; }
+.play-board { width: 100%; aspect-ratio: 1; }
+.play-player { display: flex; align-items: center; gap: 12px; min-height: 48px; }
+.play-player .piece-icon { width: 32px; height: 32px; }
+.play-player > span:last-child { margin-left: auto; color: var(--muted); font-size: var(--t-sm); }
+.play-panel { display: grid; gap: 20px; min-width: 0; }
+.play-heading { display: grid; gap: 8px; }
+.play-heading h1 { font-size: 1.7rem; line-height: 1.15; letter-spacing: -0.03em; }
+.play-heading p, .play-note { color: var(--muted); font-size: var(--t-sm); }
+.play-panel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.play-panel legend { margin-bottom: 10px; font-weight: 700; font-size: var(--t-sm); }
+.bot-picker { display: grid; gap: 4px; }
+.bot-option { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid transparent; border-radius: var(--r-md); cursor: pointer; }
+.bot-option:hover { background: var(--surface-2); }
+.bot-option:has(input:checked) { background: var(--surface); border-color: var(--accent); }
+.bot-option:has(input:focus-visible), .play-color:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+.bot-option input, .play-color input { accent-color: var(--accent); flex: none; }
+.bot-option .piece-icon { flex: none; width: 40px; height: 40px; padding: 3px; border-radius: var(--r-sm); background: var(--sq-light); }
+.bot-copy { display: grid; gap: 4px; min-width: 0; }
+.bot-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.bot-name > span { color: var(--accent); font-size: var(--t-sm); }
+.bot-description { color: var(--muted); font-size: var(--t-sm); line-height: 1.4; }
+.play-color-options { display: flex; gap: 8px; }
+.play-color { display: flex; flex: 1; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1px solid var(--border); border-radius: var(--r-sm); cursor: pointer; }
+.play-color:has(input:checked) { background: var(--surface); border-color: var(--accent); }
+.play-start { width: 100%; min-height: 48px; }
+.play-status { display: grid; gap: 8px; padding: 20px; background: var(--surface); border-radius: var(--r-md); }
+.play-status h2 { font-size: var(--t-lg); line-height: 1.3; }
+.play-status p { color: var(--muted); font-size: var(--t-sm); }
+.play-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.play-actions .button { flex: 1 1 auto; min-height: 44px; }
+.play-end > a { flex-basis: 100%; }
+.play-move-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.play-move-form input { min-width: 0; }
+.play-scoresheet { display: grid; gap: 10px; min-width: 0; }
+.play-scoresheet h2 { font-size: var(--t-sm); }
+.play-moves { max-height: 240px; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; font: 400 var(--t-sm) / 1.6 var(--font-mono); }
+.play-moves li { display: grid; grid-template-columns: 48px 1fr 1fr; padding: 6px 12px; }
+.play-moves li:nth-child(odd) { background: var(--surface); }
+.play-moves li > span:first-child { color: var(--muted); }
+.play-moves li:last-child { border-right: 2px solid var(--accent); }
+.play-secondary { padding-top: 16px; border-top: 1px solid var(--border); }
+.play-secondary .button { flex: none; font-size: var(--t-sm); }
+.play-confirm { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border-strong); border-radius: var(--r-md); }
+
+@media (max-width: 800px) {
+  .play-page { grid-template-columns: minmax(0, 560px); gap: 16px; padding: 16px; }
+  .play-preview { display: none; }
+  .play-panel { gap: 16px; }
+  .play-active .play-heading { display: none; }
+  .play-status { padding: 16px; }
+  .play-moves { max-height: 180px; }
+}
+
+@media (max-width: 380px) {
+  .play-page { padding: 12px; }
+  .play-page .topnav a { padding-inline: 8px; }
+}

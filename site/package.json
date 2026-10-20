@@ -10,7 +10,8 @@
     "build": "node scripts/copy-engine.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
     "openings": "node scripts/build-openings.mjs",
-    "check:course": "node scripts/check-course.mjs"
+    "check:course": "node scripts/check-course.mjs",
+    "check:play": "node scripts/check-play.mjs"
   },
   "dependencies": {
     "@fontsource/martian-mono": "^5.3.0",

@@ -734,6 +734,7 @@ textarea {
     'top top'
     'head head'
     'learn analysis'
+    'play play'
     'foot foot';
   align-items: stretch;
 }
@@ -770,8 +771,21 @@ textarea {
   grid-area: learn;
 }
 
-.door:last-of-type {
+.door-analysis {
   grid-area: analysis;
+}
+
+.door-play {
+  grid-area: play;
+  grid-template-columns: 80px minmax(0, 1fr);
+}
+
+.door-opponent {
+  width: 80px;
+  height: 80px;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  background: var(--sq-light);
 }
 
 .door:hover {
@@ -1071,7 +1085,7 @@ textarea {
   min-height: 44px;
 }
 
-/* Sections. Play and Puzzles are listed but not built yet. */
+/* Sections. Puzzles is listed but not built yet. */
 .topnav {
   display: flex;
   align-items: center;
@@ -1987,7 +2001,7 @@ textarea {
   }
 
   .home-doors {
-    grid-template-areas: 'top' 'head' 'learn' 'analysis' 'foot';
+    grid-template-areas: 'top' 'head' 'learn' 'analysis' 'play' 'foot';
   }
 
   .door {

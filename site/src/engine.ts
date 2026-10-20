@@ -15,6 +15,13 @@ export interface SearchResult extends PositionEval {
   best?: string;
 }
 
+export interface SearchOptions {
+  skill?: number;
+  moveTime?: number;
+  /** Moves from the standard start position, so the engine can see repetitions. */
+  moves?: string[];
+}
+
 const ENGINE_URL = '/engine/stockfish-19-lite-single.js';
 
 function parseInfo(line: string): { depth: number; multipv: number; line: Line } | null {
@@ -41,14 +48,23 @@ class Engine {
     this.worker.onerror = (e) => this.onFail?.(new Error(e.message || 'The engine failed to load.'));
   }
 
-  private request(commands: string[], handle: (line: string, done: () => void) => void): Promise<void> {
+  private request(commands: string[], handle: (line: string, done: () => void) => void, timeout = 30000): Promise<void> {
     return new Promise((resolve, reject) => {
-      const done = () => {
+      const cleanup = () => {
+        clearTimeout(timer);
         this.onLine = this.onFail = null;
+      };
+      const done = () => {
+        cleanup();
         resolve();
       };
+      const fail = (error: Error) => {
+        cleanup();
+        reject(error);
+      };
+      const timer = setTimeout(() => fail(new Error('The engine took too long to answer.')), timeout);
       this.onLine = (line) => handle(line, done);
-      this.onFail = reject;
+      this.onFail = fail;
       for (const c of commands) this.worker.postMessage(c);
     });
   }
@@ -61,11 +77,17 @@ class Engine {
     );
   }
 
-  async analyse(fen: string, depth: number, onUpdate?: (ev: PositionEval) => void): Promise<SearchResult> {
+  async analyse(fen: string, depth: number, onUpdate?: (ev: PositionEval) => void, options: SearchOptions = {}): Promise<SearchResult> {
     const lines: Line[] = [];
     let reached = 0;
     let best: string | undefined;
-    await this.request([`position fen ${fen}`, `go depth ${depth}`], (line, done) => {
+    const position = options.moves ? `position startpos moves ${options.moves.join(' ')}` : `position fen ${fen}`;
+    const commands = [
+      `setoption name Skill Level value ${options.skill ?? 20}`,
+      position,
+      `go depth ${depth}${options.moveTime ? ` movetime ${options.moveTime}` : ''}`,
+    ];
+    await this.request(commands, (line, done) => {
       if (line.startsWith('bestmove')) {
         best = line.split(' ')[1];
         return done();
@@ -75,7 +97,7 @@ class Engine {
       reached = Math.max(reached, info.depth);
       lines[info.multipv - 1] = info.line;
       onUpdate?.({ depth: reached, lines: lines.filter(Boolean) });
-    });
+    }, options.moveTime ? options.moveTime + 20000 : 120000);
     return { depth: reached, lines: lines.filter(Boolean), best: best && best !== '(none)' ? best : undefined };
   }
 
@@ -145,13 +167,13 @@ export class LiveEngine {
   }
 
   /** Searches fen to depth, reporting each deeper result. Resolves null if a later call or stop() replaced it. */
-  async analyse(fen: string, depth: number, onUpdate?: (ev: PositionEval) => void): Promise<SearchResult | null> {
+  async analyse(fen: string, depth: number, onUpdate?: (ev: PositionEval) => void, options: SearchOptions = {}): Promise<SearchResult | null> {
     const token = ++this.token;
     this.engine.stop();
     await this.ready;
     await this.current.catch(() => {});
     if (token !== this.token) return null;
-    const run = this.engine.analyse(fen, depth, (ev) => token === this.token && onUpdate?.(ev));
+    const run = this.engine.analyse(fen, depth, (ev) => token === this.token && onUpdate?.(ev), options);
     this.current = run;
     const result = await run;
     return token === this.token ? result : null;
