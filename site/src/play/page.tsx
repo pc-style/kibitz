@@ -270,7 +270,7 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
         </form>
         {moveError ? <p class="form-error" id="play-move-error" role="alert">{moveError}</p> : null}
       </>}
-      <div class="play-scoresheet"><h2>Moves</h2>{history.length ? <ol ref={list} class="play-moves" aria-label="Moves">
+      <div class="play-scoresheet" key="scoresheet"><h2>Moves</h2>{history.length ? <ol ref={list} class="play-moves" aria-label="Moves">
         {history.filter((_, i) => i % 2 === 0).map((m, i) => <li key={i}><span>{i + 1}.</span><span class="play-san" key={m.lan}>{m.san}</span><span class={history[i * 2 + 1] ? 'play-san' : ''} key={history[i * 2 + 1]?.lan ?? 'empty'}>{history[i * 2 + 1]?.san ?? ''}</span></li>)}
       </ol> : <p class="play-note">{side === 'white' ? 'Play your first move on the board or enter it above.' : `${bot.name} plays White and moves first.`}</p>}</div>
       {confirm && !end ? <div class="play-confirm" role="group" aria-label="Confirm game action"><p>{confirm === 'resign' ? 'Resign this game?' : 'Leave this game and choose another bot?'}</p><div class="play-actions">
