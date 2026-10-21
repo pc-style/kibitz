@@ -102,8 +102,8 @@
   color: var(--fg);
 }
 
-/* span.online-clock outranks play.css's muted last-span rule. */
-.play-player > span.online-clock {
+/* Specific enough to beat play.css's muted last-span rule whatever order the stylesheets load in. */
+.play-player.online-player > span.online-clock {
   min-width: 5.2em;
   padding: 6px 10px;
   border-radius: var(--r-sm);
@@ -117,12 +117,12 @@
     color var(--dur) var(--ease-out);
 }
 
-.play-player > span.online-clock-running {
+.play-player.online-player > span.online-clock-running {
   background: var(--fg);
   color: var(--bg);
 }
 
-.play-player > span.online-clock-low.online-clock-running {
+.play-player.online-player > span.online-clock-low.online-clock-running {
   background: var(--error);
   color: white;
 }
