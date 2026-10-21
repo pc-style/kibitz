@@ -1203,6 +1203,32 @@ textarea {
   background-color: var(--last-move);
 }
 
+/* A picked-up piece, chess.com style: its square tinted (the last-move color laid twice, so it reads
+   stronger than the last move), a dot on every empty square it can reach and a ring round every capture. */
+.cg-wrap {
+  --dest: rgb(0 0 0 / 0.2);
+}
+
+.cg-wrap cg-board square.selected {
+  background-color: var(--last-move);
+  background-image: linear-gradient(var(--last-move), var(--last-move));
+}
+
+.cg-wrap cg-board square.move-dest {
+  background: radial-gradient(circle closest-side, var(--dest) 31%, transparent 34%);
+}
+
+.cg-wrap cg-board square.move-dest.oc {
+  background: radial-gradient(circle closest-side, transparent 80%, var(--dest) 83% 100%, transparent 100%);
+}
+
+/* With a mouse, the square under the pointer shows where the piece would land. */
+@media (hover: hover) {
+  .cg-wrap cg-board square.move-dest:hover {
+    background: var(--last-move);
+  }
+}
+
 /* Coordinates sit inside their own square (number top-left, letter bottom-right) in the opposite square color. */
 .cg-wrap coords {
   font: 600 10px / 1 var(--font-mono);
