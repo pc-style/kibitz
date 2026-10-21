@@ -21,10 +21,10 @@
 .play-heading p, .play-note { color: var(--muted); font-size: var(--t-sm); }
 .play-panel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .play-panel legend { margin-bottom: 10px; font-weight: 700; font-size: var(--t-sm); }
-.bot-picker { display: grid; gap: 4px; }
+.bot-roster { position: relative; display: grid; gap: 4px; isolation: isolate; }
+.bot-selection { position: absolute; inset: 0 0 auto; z-index: -1; pointer-events: none; border: 1px solid var(--accent); border-radius: var(--r-md); background: var(--surface); transition: transform var(--dur-slow) var(--ease-out), height var(--dur-slow) var(--ease-out); }
 .bot-option { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid transparent; border-radius: var(--r-md); cursor: pointer; }
-.bot-option:hover { background: var(--surface-2); }
-.bot-option:has(input:checked) { background: var(--surface); border-color: var(--accent); }
+.bot-option:hover:not(:has(input:checked)) { background: var(--surface-2); }
 .bot-option:has(input:focus-visible), .play-color:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
 .bot-option input, .play-color input { accent-color: var(--accent); flex: none; }
 .bot-option .piece-icon { flex: none; width: 40px; height: 40px; padding: 3px; border-radius: var(--r-sm); background: var(--sq-light); }
@@ -55,9 +55,54 @@
 .play-secondary .button { flex: none; font-size: var(--t-sm); }
 .play-confirm { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border-strong); border-radius: var(--r-md); }
 
+/* Motion follows a choice, a turn, or a result. All durations inherit the site's
+   Animations switch and OS reduced-motion overrides in styles.css. */
+.bot-option,
+.play-color { transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out); }
+.play-preview .play-player strong,
+.play-opponent-piece { animation: play-settle var(--dur) var(--ease-out); }
+.play-active .play-panel,
+.play-end,
+.play-confirm { animation: kb-fade var(--dur-slow) var(--ease-out); }
+.play-status h2,
+.play-status p { animation: play-settle var(--dur) var(--ease-out); }
+.play-san { border-radius: 2px; animation: play-ink 600ms var(--ease-out); }
+
+.play-player .piece-icon { position: relative; }
+.play-player .piece-icon::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: 1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out);
+}
+.play-player[data-active] .piece-icon::after { opacity: 1; }
+.play-player[data-thinking] .piece-icon::after { animation: play-thinking 1400ms ease-in-out infinite; }
+.play-status { position: relative; overflow: hidden; }
+.play-status[data-ending]::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--accent);
+  transform-origin: left;
+  animation: play-result var(--dur-slow) var(--ease-out);
+}
+
+@keyframes play-settle { from { opacity: 0.45; } to { opacity: 1; } }
+@keyframes play-ink { from { background-color: var(--accent-tint); color: var(--accent); } to { background-color: transparent; color: var(--fg); } }
+@keyframes play-thinking { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+@keyframes play-result { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
 @media (max-width: 800px) {
   .play-page { grid-template-columns: minmax(0, 560px); gap: 16px; padding: 16px; }
   .play-preview { display: none; }
+  .play-active .play-stage { animation: kb-fade var(--dur-slow) var(--ease-out); }
   .play-panel { gap: 16px; }
   .play-active .play-heading { display: none; }
   .play-status { padding: 16px; }

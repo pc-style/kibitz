@@ -1,6 +1,6 @@
 import type { Key } from '@lichess-org/chessground/types';
 import { Chess } from 'chess.js';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { LiveEngine } from '../engine';
 import { arrowShape, destsOf, playUci } from '../learn/play';
 import { useSettings } from '../settings';
@@ -20,8 +20,30 @@ export function PlayPage() {
   const [color, setColor] = useState<ColorChoice>('white');
   const [match, setMatch] = useState<Match | null>(null);
   const sequence = useRef(0);
+  const roster = useRef<HTMLDivElement>(null);
+  const [selection, setSelection] = useState<{ top: number; height: number } | null>(null);
   const settings = useSettings();
-  const start = () => setMatch({ bot, side: color === 'random' ? (Math.random() < 0.5 ? 'white' : 'black') : color, id: ++sequence.current });
+  const start = () => {
+    setMatch({ bot, side: color === 'random' ? (Math.random() < 0.5 ? 'white' : 'black') : color, id: ++sequence.current });
+    window.scrollTo(0, 0);
+  };
+
+  // One selection surface follows the chosen opponent. Measure actual rows so
+  // wrapped descriptions, font loading and narrow screens don't misalign it.
+  useLayoutEffect(() => {
+    const element = roster.current;
+    if (!element) return;
+    const measure = () => {
+      const row = element.querySelector<HTMLInputElement>('input:checked')?.closest('.bot-option') as HTMLElement | null;
+      if (!row) return;
+      const next = { top: row.offsetTop, height: row.offsetHeight };
+      setSelection((previous) => previous?.top === next.top && previous.height === next.height ? previous : next);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [bot.id, !!match]);
 
   return (
     <main class={`play-page ${match ? 'play-active' : 'play-setup'}`}>
@@ -31,7 +53,7 @@ export function PlayPage() {
       ) : (
         <>
           <div class="play-stage play-preview" aria-hidden="true">
-            <div class="play-player"><Piece role={bot.piece} color={color === 'black' ? 'white' : 'black'} /><strong>{bot.name}</strong><span>{bot.level}</span></div>
+            <div class="play-player"><Piece key={`piece-${bot.id}`} role={bot.piece} color={color === 'black' ? 'white' : 'black'} class="play-opponent-piece" /><strong key={`name-${bot.id}`}>{bot.name}</strong><span>{bot.level}</span></div>
             <div class="board play-board">
               <Board fen={new Chess().fen()} orientation={color === 'black' ? 'black' : 'white'} shapes={[]} coordinates={settings.coordinates} animate={settings.motion} />
             </div>
@@ -41,13 +63,16 @@ export function PlayPage() {
             <header class="play-heading"><h1 id="play-title">Find your opponent.</h1><p>Take your time. Try an idea. Play again.</p></header>
             <fieldset class="bot-picker">
               <legend>Choose a bot</legend>
-              {BOTS.map((b) => (
-                <label key={b.id} class="bot-option">
-                  <input type="radio" name="bot" value={b.id} checked={bot.id === b.id} onChange={() => setBot(b)} />
-                  <Piece role={b.piece} color="black" />
-                  <span class="bot-copy"><span class="bot-name"><strong>{b.name}</strong><span>{b.level}</span></span><span class="bot-description">{b.description}</span></span>
-                </label>
-              ))}
+              <div class="bot-roster" ref={roster}>
+                {selection ? <span class="bot-selection" aria-hidden="true" style={{ transform: `translateY(${selection.top}px)`, height: `${selection.height}px` }} /> : null}
+                {BOTS.map((b) => (
+                  <label key={b.id} class="bot-option">
+                    <input type="radio" name="bot" value={b.id} checked={bot.id === b.id} onChange={() => setBot(b)} />
+                    <Piece role={b.piece} color="black" />
+                    <span class="bot-copy"><span class="bot-name"><strong>{b.name}</strong><span>{b.level}</span></span><span class="bot-description">{b.description}</span></span>
+                  </label>
+                ))}
+              </div>
             </fieldset>
             <fieldset class="play-colors"><legend>You play</legend><div class="play-color-options">
               {(['white', 'random', 'black'] as const).map((c) => (
@@ -212,8 +237,9 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
     } catch { setMoveError('Try a legal move such as e4, Nf3, or O-O.'); }
   };
   const opponentSide = side === 'white' ? 'black' : 'white';
-  const player = (color: Side) => <div class="play-player"><Piece role={color === side ? 'king' : bot.piece} color={color} /><strong>{color === side ? 'You' : bot.name}</strong><span>{color === side ? `${side === 'white' ? 'White' : 'Black'} · No clock` : bot.level}</span></div>;
+  const player = (color: Side) => <div class="play-player" data-active={!end && chess.turn() === color[0] ? '' : undefined} data-thinking={!end && color !== side && busy === 'bot' ? '' : undefined}><Piece role={color === side ? 'king' : bot.piece} color={color} /><strong>{color === side ? 'You' : bot.name}</strong><span>{color === side ? `${side === 'white' ? 'White' : 'Black'} · No clock` : bot.level}</span></div>;
   const status = end?.title ?? (failure ? (myTurn ? 'The hint could not load.' : 'The bot could not reply.') : promoting ? 'Choose your promotion.' : !myTurn ? `${bot.name} is thinking…` : chess.inCheck() ? 'Your move. You are in check.' : 'Your move.');
+  const detail = end?.detail ?? (hint ? `Try ${hint.san}. Follow the arrow on the board.` : busy === 'hint' ? 'Finding a hint…' : failure ? 'Restart the engine to try again. Your game is kept.' : 'Hints and takebacks are always available.');
 
   return <>
     <section class="play-stage" aria-label="Game board">
@@ -226,7 +252,7 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
     </section>
     <section class="play-panel" aria-label="Game controls">
       <header class="play-heading"><h1>You vs {bot.name}</h1><p>{bot.level} opponent</p></header>
-      <div class="play-status" role="status"><h2>{status}</h2><p>{end?.detail ?? (hint ? `Try ${hint.san}. Follow the arrow on the board.` : busy === 'hint' ? 'Finding a hint…' : failure ? 'Restart the engine to try again. Your game is kept.' : 'Hints and takebacks are always available.')}</p></div>
+      <div class="play-status" role="status" data-ending={end ? '' : undefined}><h2 key={status}>{status}</h2><p key={detail}>{detail}</p></div>
       {failure && !end ? <button class="button" type="button" onClick={restartEngine}>Restart engine</button> : null}
       {end ? <div class="play-actions play-end">
         {history.length ? <a class="button button-primary" href={reviewHash(gamePgn(chess, bot, side, end.result), side === 'white' ? 'w' : 'b')}>Review this game</a> : null}
@@ -245,7 +271,7 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
         {moveError ? <p class="form-error" id="play-move-error" role="alert">{moveError}</p> : null}
       </>}
       <div class="play-scoresheet"><h2>Moves</h2>{history.length ? <ol ref={list} class="play-moves" aria-label="Moves">
-        {history.filter((_, i) => i % 2 === 0).map((m, i) => <li key={i}><span>{i + 1}.</span><span>{m.san}</span><span>{history[i * 2 + 1]?.san ?? ''}</span></li>)}
+        {history.filter((_, i) => i % 2 === 0).map((m, i) => <li key={i}><span>{i + 1}.</span><span class="play-san" key={m.lan}>{m.san}</span><span class={history[i * 2 + 1] ? 'play-san' : ''} key={history[i * 2 + 1]?.lan ?? 'empty'}>{history[i * 2 + 1]?.san ?? ''}</span></li>)}
       </ol> : <p class="play-note">{side === 'white' ? 'Play your first move on the board or enter it above.' : `${bot.name} plays White and moves first.`}</p>}</div>
       {confirm && !end ? <div class="play-confirm" role="group" aria-label="Confirm game action"><p>{confirm === 'resign' ? 'Resign this game?' : 'Leave this game and choose another bot?'}</p><div class="play-actions">
         <button class="button" type="button" onClick={() => setConfirm(null)}>Keep playing</button>
