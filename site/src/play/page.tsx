@@ -9,13 +9,15 @@ import { Board, type Movable } from '../ui/board';
 import { TopNav } from '../ui/nav';
 import { Piece } from '../ui/piece';
 import { isPromotion, PromotionPicker } from '../ui/promotion';
+import { FriendSetup } from '../online/setup';
 import { BOTS, botMove, gameEnding, gamePgn, takeBack, type Bot, type Side } from './bots';
 import './play.css';
 
 type ColorChoice = Side | 'random';
 interface Match { bot: Bot; side: Side; id: number }
 
-export function PlayPage() {
+export function PlayPage({ friend = false }: { friend?: boolean }) {
+  const [opponent, setOpponent] = useState<'bot' | 'friend'>(friend ? 'friend' : 'bot');
   const [bot, setBot] = useState(BOTS[0]);
   const [color, setColor] = useState<ColorChoice>('white');
   const [match, setMatch] = useState<Match | null>(null);
@@ -43,7 +45,7 @@ export function PlayPage() {
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [bot.id, !!match]);
+  }, [bot.id, !!match, opponent]);
 
   return (
     <main class={`play-page ${match ? 'play-active' : 'play-setup'}`}>
@@ -53,14 +55,22 @@ export function PlayPage() {
       ) : (
         <>
           <div class="play-stage play-preview" aria-hidden="true">
-            <div class="play-player"><Piece key={`piece-${bot.id}`} role={bot.piece} color={color === 'black' ? 'white' : 'black'} class="play-opponent-piece" /><strong key={`name-${bot.id}`}>{bot.name}</strong><span>{bot.level}</span></div>
+            {opponent === 'friend'
+              ? <div class="play-player"><Piece role="pawn" color="black" /><strong>Your friend</strong><span>Joins by link</span></div>
+              : <div class="play-player"><Piece key={`piece-${bot.id}`} role={bot.piece} color={color === 'black' ? 'white' : 'black'} class="play-opponent-piece" /><strong key={`name-${bot.id}`}>{bot.name}</strong><span>{bot.level}</span></div>}
             <div class="board play-board">
               <Board fen={new Chess().fen()} orientation={color === 'black' ? 'black' : 'white'} shapes={[]} coordinates={settings.coordinates} animate={settings.motion} />
             </div>
-            <div class="play-player"><Piece role="king" color={color === 'black' ? 'black' : 'white'} /><strong>You</strong><span>No clock</span></div>
+            <div class="play-player"><Piece role="king" color={opponent === 'bot' && color === 'black' ? 'black' : 'white'} /><strong>You</strong><span>{opponent === 'friend' ? 'Online' : 'No clock'}</span></div>
           </div>
           <section class="play-panel" aria-labelledby="play-title">
-            <header class="play-heading"><h1 id="play-title">Find your opponent.</h1><p>Take your time. Try an idea. Play again.</p></header>
+            <header class="play-heading"><h1 id="play-title">Find your opponent.</h1><p>{opponent === 'friend' ? 'Make a link, send it, and play in real time.' : 'Take your time. Try an idea. Play again.'}</p></header>
+            <div class="segmented segmented-wide play-mode" role="radiogroup" aria-label="Opponent">
+              {(['bot', 'friend'] as const).map((o) => (
+                <button key={o} type="button" role="radio" aria-checked={opponent === o} onClick={() => setOpponent(o)}>{o === 'bot' ? 'A bot' : 'A friend'}</button>
+              ))}
+            </div>
+            {opponent === 'friend' ? <FriendSetup /> : <>
             <fieldset class="bot-picker">
               <legend>Choose a bot</legend>
               <div class="bot-roster" ref={roster}>
@@ -81,6 +91,7 @@ export function PlayPage() {
             </div></fieldset>
             <button type="button" class="button button-primary play-start" onClick={start}>Play {bot.name}</button>
             <p class="play-note">Free, with hints and takebacks. All five bots use Stockfish on your device.</p>
+            </>}
           </section>
         </>
       )}

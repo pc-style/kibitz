@@ -1,0 +1,226 @@
+/* Playing a friend: the Play page's layout, plus clocks, presence, the invite link and time modes. */
+
+.play-mode {
+  margin-top: -4px;
+}
+
+.online-setup,
+.online-join {
+  display: grid;
+  gap: 16px;
+}
+
+.online-setup fieldset,
+.online-clocks {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.online-setup legend,
+.online-clocks legend {
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: var(--t-sm);
+}
+
+/* Time modes: six chips, three to a row. */
+.online-time-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.online-time {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
+}
+
+.online-time input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.online-time strong {
+  font: 600 var(--t-md) / 1.1 var(--font-mono);
+}
+
+.online-time span {
+  color: var(--muted);
+  font-size: var(--t-xs);
+}
+
+.online-time:hover {
+  background: var(--surface-2);
+}
+
+.online-time:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.online-time:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Player rows: name, online dot, a "you" tag, and the clock pushed right. */
+.online-player {
+  gap: 10px;
+}
+
+.online-player strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "you" on your row; "away" when the other player's tab has gone quiet. Whose turn it is shows on the clock. */
+.online-tag {
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--muted);
+  font: 600 var(--t-xs) / 1.2 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.online-away {
+  background: color-mix(in oklab, var(--g-mistake) 22%, var(--surface));
+  color: var(--fg);
+}
+
+/* span.online-clock outranks play.css's muted last-span rule. */
+.play-player > span.online-clock {
+  min-width: 5.2em;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font: 600 var(--t-md) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
+}
+
+.play-player > span.online-clock-running {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.play-player > span.online-clock-low.online-clock-running {
+  background: var(--error);
+  color: white;
+}
+
+.online-invite {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.online-invite input {
+  font: 400 var(--t-sm) / 1.4 var(--font-mono);
+}
+
+.online-invite-compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.online-invite-compact .button {
+  min-height: 40px;
+}
+
+.online-join {
+  padding: 20px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  animation: kb-fade var(--dur-slow) var(--ease-out);
+}
+
+.online-join h2 {
+  font-size: var(--t-lg);
+  line-height: 1.3;
+}
+
+.online-join > p:first-of-type {
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+.online-foot {
+  display: grid;
+  gap: 14px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.online-offline {
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--g-mistake) 18%, var(--surface));
+  font-size: var(--t-sm);
+}
+
+.online-idle {
+  color: var(--fg);
+}
+
+.online-note {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+.online-gone {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+  max-width: 520px;
+  margin: 10vh auto 0;
+}
+
+.online-gone h1 {
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+}
+
+.online-gone p {
+  color: var(--muted);
+}
+
+.online-page > .topbar {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 800px) {
+  .online-time-grid {
+    gap: 6px;
+  }
+
+  .online-invite-compact {
+    grid-template-columns: 1fr;
+  }
+}

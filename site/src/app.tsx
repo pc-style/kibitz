@@ -31,18 +31,19 @@ type Route =
   | { page: 'analysis' }
   | { page: 'board'; fen?: string }
   | { page: 'learn' }
-  | { page: 'play' }
+  | { page: 'play'; friend: boolean }
+  | { page: 'room'; code: string }
   | { page: 'lesson'; id: string }
   | { page: 'review'; pgn: string; orientation: 'w' | 'b' };
 
-/** Pages live at #/learn, #/learn/<lesson>, #/analysis and #/board?fen=; reviews keep their #pgn= links. */
+/** Pages live at #/learn, #/learn/<lesson>, #/play, #/play/<room>, #/analysis and #/board?fen=; reviews keep their #pgn= links. */
 function readHash(): Route {
   const hash = location.hash.slice(1);
   if (hash.startsWith('/')) {
     const [path, query] = hash.split('?');
     const [section, id] = path.split('/').filter(Boolean);
     if (section === 'learn') return id ? { page: 'lesson', id } : { page: 'learn' };
-    if (section === 'play') return { page: 'play' };
+    if (section === 'play') return id ? { page: 'room', code: id } : { page: 'play', friend: new URLSearchParams(query).get('with') === 'friend' };
     if (section === 'analysis') return { page: 'analysis' };
     if (section === 'board') return { page: 'board', fen: new URLSearchParams(query).get('fen') ?? undefined };
     return { page: 'home' };
@@ -78,12 +79,23 @@ export function App() {
     case 'learn':
       return <CourseMap />;
     case 'play':
-      return <PlayPage />;
+      return <PlayPage key={String(route.friend)} friend={route.friend} />;
+    case 'room':
+      return <RoomRoute key={route.code} code={route.code} />;
     case 'lesson':
       return <LessonPage key={route.id} id={route.id} />;
     default:
       return <Home />;
   }
+}
+
+/** A room page, loaded on demand so the realtime client stays out of every other page. */
+function RoomRoute({ code }: { code: string }) {
+  const [page, setPage] = useState<{ Room: typeof import('./online/room').RoomPage } | null>(null);
+  useEffect(() => {
+    import('./online/room').then((m) => setPage({ Room: m.RoomPage }));
+  }, []);
+  return page ? <page.Room code={code} /> : <main class="play-page" aria-busy="true" />;
 }
 
 /** The way in: Learn, Analysis, and a game against a bot. */
