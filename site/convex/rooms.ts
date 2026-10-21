@@ -68,9 +68,10 @@ function ending(chess: Chess): { result: string; reason: string } | null {
 }
 
 /**
- * Whether `side` could still give mate by any series of legal moves (the FIDE test), which decides if
- * running out of time loses or draws. A lone minor piece needs the other side's own pieces to box its
- * king in, and bishops that all stand on one square color can never mate if nothing else is left.
+ * Whether `side` has mating material, which decides if the opponent running out of time loses or draws.
+ * Lichess's rules: a lone king can't mate; a lone knight mates only against a rook, bishop, knight or pawn
+ * (something to box the king in that can't also block or capture); bishops all on one square color mate
+ * only against a knight, a pawn or a bishop of the other color.
  */
 function canMate(chess: Chess, side: Color): boolean {
   const pieces = chess
@@ -78,14 +79,17 @@ function canMate(chess: Chess, side: Color): boolean {
     .flat()
     .filter((p): p is NonNullable<typeof p> => p !== null && p.type !== 'k');
   const mine = pieces.filter((p) => p.color === side[0]);
-  if (mine.some((p) => p.type === 'p' || p.type === 'r' || p.type === 'q')) return true;
-  if (!mine.length) return false;
   const theirs = pieces.filter((p) => p.color !== side[0]);
-  if (pieces.every((p) => p.type === 'b')) {
-    const shade = (sq: string) => (sq.charCodeAt(0) + Number(sq[1])) % 2;
-    if (new Set(pieces.map((p) => shade(p.square))).size === 1) return false;
-  }
-  return mine.length >= 2 || theirs.length > 0;
+  if (mine.some((p) => p.type === 'p' || p.type === 'r' || p.type === 'q')) return true;
+  const knights = mine.filter((p) => p.type === 'n').length;
+  const bishops = mine.filter((p) => p.type === 'b');
+  if (!knights && !bishops.length) return false;
+  if (knights && bishops.length) return true;
+  if (knights) return knights >= 2 || theirs.some((p) => p.type !== 'q');
+  const shade = (sq: string) => (sq.charCodeAt(0) + Number(sq[1])) % 2;
+  const mineShade = new Set(bishops.map((p) => shade(p.square)));
+  if (mineShade.size > 1) return true;
+  return theirs.some((p) => p.type === 'n' || p.type === 'p' || (p.type === 'b' && !mineShade.has(shade(p.square))));
 }
 
 const winFor = (c: Color) => (c === 'white' ? '1-0' : '0-1');

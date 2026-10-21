@@ -87,14 +87,35 @@ export function useConnected(): boolean {
 
 // Server time is a reading from the server plus time elapsed on the monotonic clock, so changing the
 // device's clock mid-game doesn't move it. Until the first reading, the device clock stands in.
-let anchor = { server: Date.now(), at: performance.now() };
+let anchor = { server: Date.now(), at: performance.now(), wall: Date.now() };
 let synced: Promise<void> | null = null;
+let watching = false;
+
+/**
+ * Some systems pause the monotonic clock while the computer sleeps, which would leave clocks behind with
+ * the tab still visible and the socket still up. When it and the wall clock drift apart, read the server again.
+ */
+function watchForDrift() {
+  if (watching) return;
+  watching = true;
+  let reading = false;
+  setInterval(() => {
+    const drift = Date.now() - anchor.wall - (performance.now() - anchor.at);
+    if (reading || Math.abs(drift) < 1500) return;
+    reading = true;
+    void syncServerTime(true).finally(() => {
+      anchor.wall = Date.now() - (performance.now() - anchor.at);
+      reading = false;
+    });
+  }, 2000);
+}
 
 /**
  * Reads the server's clock. The first call also waits for the socket to connect, so it takes a few round
  * trips and trusts the fastest. Pass `again` to resample, e.g. after reconnecting or a sleeping tab.
  */
 export function syncServerTime(again = false): Promise<void> {
+  watchForDrift();
   if (again) synced = null;
   return (synced ??= (async () => {
     let fastest = Infinity;
@@ -104,7 +125,7 @@ export function syncServerTime(again = false): Promise<void> {
       const trip = performance.now() - sent;
       if (trip < fastest) {
         fastest = trip;
-        anchor = { server: server + trip / 2, at: sent + trip };
+        anchor = { server: server + trip / 2, at: sent + trip, wall: Date.now() };
       }
     }
   })().catch(() => {
