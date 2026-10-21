@@ -67,14 +67,25 @@ function ending(chess: Chess): { result: string; reason: string } | null {
   return null;
 }
 
-/** Whether `side` could still give mate, which decides if running out of time loses or draws. */
+/**
+ * Whether `side` could still give mate by any series of legal moves (the FIDE test), which decides if
+ * running out of time loses or draws. A lone minor piece needs the other side's own pieces to box its
+ * king in, and bishops that all stand on one square color can never mate if nothing else is left.
+ */
 function canMate(chess: Chess, side: Color): boolean {
-  const mine = chess.board().flat().filter((p) => p && p.color === side[0]);
-  if (mine.some((p) => p!.type === 'p' || p!.type === 'r' || p!.type === 'q')) return true;
-  const minors = mine.filter((p) => p!.type === 'n' || p!.type === 'b').length;
-  if (minors >= 2) return true;
-  // A lone knight or bishop can only mate if the other side has pieces to box its own king in.
-  return minors === 1 && chess.board().flat().some((p) => p && p.color !== side[0] && p.type !== 'k');
+  const pieces = chess
+    .board()
+    .flat()
+    .filter((p): p is NonNullable<typeof p> => p !== null && p.type !== 'k');
+  const mine = pieces.filter((p) => p.color === side[0]);
+  if (mine.some((p) => p.type === 'p' || p.type === 'r' || p.type === 'q')) return true;
+  if (!mine.length) return false;
+  const theirs = pieces.filter((p) => p.color !== side[0]);
+  if (pieces.every((p) => p.type === 'b')) {
+    const shade = (sq: string) => (sq.charCodeAt(0) + Number(sq[1])) % 2;
+    if (new Set(pieces.map((p) => shade(p.square))).size === 1) return false;
+  }
+  return mine.length >= 2 || theirs.length > 0;
 }
 
 const winFor = (c: Color) => (c === 'white' ? '1-0' : '0-1');
@@ -93,6 +104,24 @@ function timeoutPatch(room: Room, flagged: Color, now: number): Partial<Room> {
     // Running out of time counts as activity, so the players get the full 15 minutes to ask for a rematch.
     lastActivity: now,
   };
+}
+
+/** The side to move's time left right now, or null when no clock is running. */
+const timeLeft = (room: Room, now: number) => (clockRunning(room) ? room[msKey(turnOf(room))] - (now - room.turnStartedAt) : null);
+
+/**
+ * Before anything ends a game (a move, resignation, a draw), checks whether the side to move already ran
+ * out of time; the scheduled flag check may simply not have run yet. Returns the timeout to apply, if any.
+ */
+function flagFallen(room: Room, now: number): Partial<Room> | null {
+  const left = timeLeft(room, now);
+  return left !== null && left <= 0 ? timeoutPatch(room, turnOf(room), now) : null;
+}
+
+/** Stops the running clock where it stands, for games that end by resignation or agreement. */
+function stopClock(room: Room, now: number): Partial<Room> {
+  const left = timeLeft(room, now);
+  return left === null ? {} : { [msKey(turnOf(room))]: left };
 }
 
 async function scheduleFlag(ctx: MutationCtx, room: Room, inMs: number) {
@@ -230,16 +259,14 @@ export const move = mutation({
     if (ply !== room.moves.length) throw new ConvexError('The board changed. Try that move again.');
     if (turnOf(room) !== me) throw new ConvexError("It's not your move.");
     const now = Date.now();
-    const clock: Partial<Room> = {};
-    if (clockRunning(room)) {
-      const left = room[msKey(me)] - (now - room.turnStartedAt);
-      if (left <= 0) {
-        // The move arrived after the flag fell; the scheduled check may not have run yet.
-        await ctx.db.patch(room._id, timeoutPatch(room, me, now));
-        return;
-      }
-      clock[msKey(me)] = left + incrementMs(room.clock);
+    const timeout = flagFallen(room, now);
+    if (timeout) {
+      // The move arrived after the flag fell.
+      await ctx.db.patch(room._id, timeout);
+      return { timedOut: true };
     }
+    const clock: Partial<Room> = {};
+    if (room.clock !== 'none') clock[msKey(me)] = (timeLeft(room, now) ?? room[msKey(me)]) + incrementMs(room.clock);
     const chess = replay(room.moves);
     let lan: string;
     try {
@@ -261,6 +288,7 @@ export const move = mutation({
     };
     await ctx.db.replace(room._id, next);
     if (clockRunning(next)) await scheduleFlag(ctx, next, next[msKey(other(me))]);
+    return { timedOut: false };
   },
 });
 
@@ -270,11 +298,10 @@ export const flag = internalMutation({
   handler: async (ctx, { id, game, ply }) => {
     const room = await ctx.db.get(id);
     if (!room || room.game !== game || room.moves.length !== ply || !clockRunning(room)) return;
-    const side = turnOf(room);
     const now = Date.now();
-    const left = room[msKey(side)] - (now - room.turnStartedAt);
+    const left = timeLeft(room, now)!;
     if (left > 0) return scheduleFlag(ctx, room, left);
-    await ctx.db.patch(room._id, timeoutPatch(room, side, now));
+    await ctx.db.patch(room._id, timeoutPatch(room, turnOf(room), now));
   },
 });
 
@@ -283,7 +310,11 @@ export const resign = mutation({
   handler: async (ctx, { code, token }) => {
     const { room, me } = await playerRoom(ctx, code, token);
     if (room.status !== 'playing') throw new ConvexError('This game is not in progress.');
-    await ctx.db.patch(room._id, { status: 'over', result: winFor(other(me)), reason: 'resignation', drawOffer: undefined, lastActivity: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(
+      room._id,
+      flagFallen(room, now) ?? { ...stopClock(room, now), status: 'over', result: winFor(other(me)), reason: 'resignation', drawOffer: undefined, lastActivity: now },
+    );
   },
 });
 
@@ -304,8 +335,11 @@ export const offerDraw = mutation({
     const { room, me } = await playerRoom(ctx, code, token);
     if (room.status !== 'playing') throw new ConvexError('This game is not in progress.');
     const now = Date.now();
-    if (room.drawOffer === other(me)) {
-      await ctx.db.patch(room._id, { status: 'over', result: '1/2-1/2', reason: 'agreement', drawOffer: undefined, lastActivity: now });
+    const timeout = flagFallen(room, now);
+    if (timeout) {
+      await ctx.db.patch(room._id, timeout);
+    } else if (room.drawOffer === other(me)) {
+      await ctx.db.patch(room._id, { ...stopClock(room, now), status: 'over', result: '1/2-1/2', reason: 'agreement', drawOffer: undefined, lastActivity: now });
     } else {
       await ctx.db.patch(room._id, { drawOffer: me, lastActivity: now });
     }

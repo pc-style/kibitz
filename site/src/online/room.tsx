@@ -35,7 +35,12 @@ export function RoomPage({ code }: { code: string }) {
   const me = player();
   const { room, error } = useRoom(code, me.token);
   const connected = useConnected();
-  useEffect(() => void syncServerTime(), []);
+  useEffect(() => {
+    void syncServerTime();
+    const back = () => document.visibilityState === 'visible' && void syncServerTime(true);
+    document.addEventListener('visibilitychange', back);
+    return () => document.removeEventListener('visibilitychange', back);
+  }, []);
 
   if (room === undefined) {
     return (
@@ -77,8 +82,9 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
   const you = room.you;
   const seated = !!you;
   const [orientation, setOrientation] = useState<Color>(you ?? 'white');
-  const [pending, setPending] = useState<{ ply: number; uci: string } | null>(null);
-  const [promoting, setPromoting] = useState<{ from: Key; to: Key } | null>(null);
+  // A move sent but not yet confirmed, with your clock as it stood when you let go of the piece.
+  const [pending, setPending] = useState<{ ply: number; uci: string; clockMs: number } | null>(null);
+  const [picking, setPromoting] = useState<{ from: Key; to: Key; ply: number } | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string>();
@@ -89,8 +95,8 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
     if (you) setOrientation(you);
   }, [you, room.game]);
 
-  // The server's next update supersedes a move we drew early.
-  useEffect(() => setPending(null), [room.moves.length, room.game]);
+  // The server's next update supersedes a move we drew early, including a game that ended on time instead.
+  useEffect(() => setPending(null), [room.moves.length, room.game, room.status]);
   useEffect(() => {
     setPromoting(null);
     setConfirm(false);
@@ -110,6 +116,8 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
   }, [seated, code]);
 
   const moves = pending && pending.ply === room.moves.length ? [...room.moves, pending.uci] : room.moves;
+  // A promotion choice belongs to the position it was made in; a move from another tab retires it.
+  const promoting = picking && picking.ply === room.moves.length && !pending ? picking : null;
   const chess = useMemo(() => replay(moves), [moves.join(' ')]);
   const history = chess.history({ verbose: true });
   const last = history.at(-1);
@@ -136,12 +144,16 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
     const m = playUci(probe, from + to + promotion);
     if (!m || !myTurn) return;
     const ply = room.moves.length;
-    setPending({ ply, uci: m.lan });
+    setPending({ ply, uci: m.lan, clockMs: clockAt(room, you!, serverNow()) });
     setProblem(undefined);
-    rooms.move({ ...args, uci: m.lan, ply }).catch((err) => {
-      setPending(null);
-      setProblem(errorText(err));
-    });
+    // By the time a Convex mutation resolves, the room update it caused has arrived, so the early copy can go.
+    rooms.move({ ...args, uci: m.lan, ply }).then(
+      () => setPending(null),
+      (err) => {
+        setPending(null);
+        setProblem(errorText(err));
+      },
+    );
   };
 
   const movable = useMemo<Movable | undefined>(
@@ -151,11 +163,15 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
         : {
             color: you,
             dests: destsOf(chess),
-            onMove: (from, to) => (isPromotion(chess.fen(), from, to) ? setPromoting({ from, to }) : send(from, to)),
+            onMove: (from, to) => (isPromotion(chess.fen(), from, to) ? setPromoting({ from, to, ply: room.moves.length }) : send(from, to)),
           },
     [myTurn, promoting, chess, you],
   );
-  const shownFen = promoting ? new Chess(chess.fen()).move({ ...promoting, promotion: 'q' }).after : chess.fen();
+  const shownFen = useMemo(() => {
+    if (!promoting) return chess.fen();
+    const probe = new Chess(chess.fen());
+    return playUci(probe, promoting.from + promoting.to + 'q') ? probe.fen() : chess.fen();
+  }, [promoting, chess]);
 
   useEffect(() => {
     if (list.current) list.current.scrollTop = list.current.scrollHeight;
@@ -168,7 +184,7 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
   return (
     <Shell>
       <section class="play-stage" aria-label="Game board">
-        <PlayerRow room={room} color={other(orientation)} you={you} turn={turn} pending={!!pending} />
+        <PlayerRow room={room} color={other(orientation)} you={you} frozenMs={pending?.clockMs} />
         <div class="board play-board">
           <Board
             fen={shownFen}
@@ -183,7 +199,7 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
             <PromotionPicker square={promoting.to} color={you} orientation={orientation} onPick={(p) => send(promoting.from, promoting.to, p)} onCancel={() => setPromoting(null)} />
           ) : null}
         </div>
-        <PlayerRow room={room} color={orientation} you={you} turn={turn} pending={!!pending} />
+        <PlayerRow room={room} color={orientation} you={you} frozenMs={pending?.clockMs} />
       </section>
 
       <section class="play-panel" aria-label="Game">
@@ -367,19 +383,30 @@ function ending(room: RoomView, you: Color | null, names: Record<Color, string>)
   }
 }
 
-function PlayerRow({ room, color, you, turn, pending }: { room: RoomView; color: Color; you: Color | null; turn: Color; pending: boolean }) {
+/** Time on `color`'s clock at server time `now`, never more than the server granted. */
+function clockAt(room: RoomView, color: Color, now: number): number {
+  const base = color === 'white' ? room.whiteMs : room.blackMs;
+  const turn: Color = room.moves.length % 2 === 0 ? 'white' : 'black';
+  const running = room.status === 'playing' && room.clock !== 'none' && room.moves.length >= 2 && turn === color;
+  return running ? Math.min(base, Math.max(0, base - (now - room.turnStartedAt))) : base;
+}
+
+/**
+ * A player's name, presence and clock. Clocks follow the server's turn: while your move is on its way,
+ * your clock holds where you stopped it and the opponent's waits until the server starts it.
+ */
+function PlayerRow({ room, color, you, frozenMs }: { room: RoomView; color: Color; you: Color | null; frozenMs?: number }) {
   const seat = room[color];
   const [now, setNow] = useState(serverNow);
-  // Your own clock stops the moment you move, before the server confirms it.
-  const running = room.status === 'playing' && room.clock !== 'none' && room.moves.length >= 2 && turn === color && !(pending && color === you);
+  const turn: Color = room.moves.length % 2 === 0 ? 'white' : 'black';
+  const frozen = frozenMs !== undefined && color === you;
+  const running = !frozen && room.status === 'playing' && room.clock !== 'none' && room.moves.length >= 2 && turn === color;
   useEffect(() => {
     const timer = setInterval(() => setNow(serverNow()), running ? 100 : 5000);
     return () => clearInterval(timer);
   }, [running]);
   const online = !!seat && now - seat.seenAt < 45_000;
-  const base = color === 'white' ? room.whiteMs : room.blackMs;
-  // Clamped both ways: a clock never shows more time than the server granted, whatever the device clock says.
-  const ms = running ? Math.min(base, Math.max(0, base - (now - room.turnStartedAt))) : base;
+  const ms = frozen ? frozenMs : clockAt(room, color, now);
   return (
     <div class="play-player online-player" data-active={room.status === 'playing' && turn === color ? '' : undefined}>
       <Piece role={color === you ? 'king' : 'pawn'} color={color} />
@@ -528,12 +555,13 @@ function IdleNote({ room }: { room: RoomView }) {
     return () => clearInterval(timer);
   }, []);
   const left = room.lastActivity + IDLE_MS - now;
-  if (left > 5 * 60_000) return <p class="play-note">Rooms close after 15 minutes without a move.</p>;
+  if (left > 5 * 60_000) return <p class="play-note">Rooms close after 15 minutes with no moves or other actions.</p>;
   const m = Math.max(0, Math.floor(left / 60_000));
   const s = Math.max(0, Math.floor((left % 60_000) / 1000));
+  const keep = room.status === 'waiting' ? 'if nobody joins' : room.status === 'over' ? 'unless someone asks for a rematch' : 'unless someone moves';
   return (
     <p class="play-note online-idle">
-      This room closes in {m}:{String(s).padStart(2, '0')} unless someone moves.
+      This room closes in {m}:{String(s).padStart(2, '0')} {keep}.
     </p>
   );
 }

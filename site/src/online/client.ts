@@ -70,8 +70,12 @@ export function useConnected(): boolean {
     }
     // Give the first connection a moment before calling it lost.
     const timer = setTimeout(() => setConnected(c.connectionState().isWebSocketConnected), 4000);
+    let was = true;
     const stop = c.subscribeToConnectionState((s) => {
-      if (s.hasEverConnected) setConnected(s.isWebSocketConnected);
+      if (!s.hasEverConnected) return;
+      setConnected(s.isWebSocketConnected);
+      if (s.isWebSocketConnected && !was) void syncServerTime(true);
+      was = s.isWebSocketConnected;
     });
     return () => {
       clearTimeout(timer);
@@ -81,23 +85,26 @@ export function useConnected(): boolean {
   return connected;
 }
 
-let offset = 0;
+// Server time is a reading from the server plus time elapsed on the monotonic clock, so changing the
+// device's clock mid-game doesn't move it. Until the first reading, the device clock stands in.
+let anchor = { server: Date.now(), at: performance.now() };
 let synced: Promise<void> | null = null;
 
 /**
- * Measures how far this device's clock is from the server's, once per visit. The first call also waits for
- * the socket to connect, so it takes a few round trips and trusts the fastest.
+ * Reads the server's clock. The first call also waits for the socket to connect, so it takes a few round
+ * trips and trusts the fastest. Pass `again` to resample, e.g. after reconnecting or a sleeping tab.
  */
-export function syncServerTime(): Promise<void> {
+export function syncServerTime(again = false): Promise<void> {
+  if (again) synced = null;
   return (synced ??= (async () => {
     let fastest = Infinity;
     for (let i = 0; i < 3; i++) {
-      const sent = Date.now();
+      const sent = performance.now();
       const server = await convex().mutation(api.rooms.now, {});
-      const trip = Date.now() - sent;
+      const trip = performance.now() - sent;
       if (trip < fastest) {
         fastest = trip;
-        offset = server - (sent + trip / 2);
+        anchor = { server: server + trip / 2, at: sent + trip };
       }
     }
   })().catch(() => {
@@ -105,4 +112,4 @@ export function syncServerTime(): Promise<void> {
   }));
 }
 
-export const serverNow = () => Date.now() + offset;
+export const serverNow = () => anchor.server + (performance.now() - anchor.at);
