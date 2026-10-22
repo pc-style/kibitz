@@ -58,6 +58,7 @@ export function BotGame() {
   const [resigned, setResigned] = useState(false);
   const [promoting, setPromoting] = useState<{ from: Key; to: Key } | null>(null);
   const [engineFailed, setEngineFailed] = useState(false);
+  const [hintState, setHintState] = useState<'busy' | 'failed' | null>(null);
   // Bumped by a new game, a resignation or a take-back, so a bot reply still on its way is dropped.
   const turn = useRef(0);
 
@@ -83,6 +84,7 @@ export function BotGame() {
     setFen(c.fen());
     setLastMove(last ? [last.from as Key, last.to as Key] : undefined);
     setHint(undefined);
+    setHintState(null);
   };
 
   const botTurn = () => {
@@ -169,10 +171,24 @@ export function BotGame() {
   const shownFen = useMemo(() => (promoting ? new Chess(fen).move({ ...promoting, promotion: 'q' }).after : fen), [fen, promoting]);
 
   const askHint = () => {
+    if (!myTurn || hintState === 'busy' || !engine.current) return;
+    const id = turn.current;
+    setHintState('busy');
     engine.current
-      ?.analyse(fen, 12)
-      .then((r) => r?.lines[0]?.pv[0] && setHint(r.lines[0].pv[0]))
-      .catch(() => {});
+      .analyse(fen, 12)
+      .then((r) => {
+        if (id !== turn.current) return;
+        const best = r?.lines[0]?.pv[0];
+        if (best) setHint(best);
+        // null means the search was replaced (you moved); anything else is a failure worth saying.
+        setHintState(best || r === null ? null : 'failed');
+      })
+      .catch(() => {
+        if (id !== turn.current) return;
+        setHintState('failed');
+        // A timed-out engine is retired; the next hint (and the bot) get a fresh one.
+        replaceEngine();
+      });
   };
   const takeBack = () => {
     if (!side) return;
@@ -245,6 +261,9 @@ export function BotGame() {
           <p class="coach-line">
             You play {side === 'white' ? 'White' : 'Black'} · move {Math.floor(history.length / 2) + 1}
           </p>
+          {myTurn && hintState === 'busy' ? <p class="coach-detail">Finding a good move for you…</p> : null}
+          {myTurn && hintState === 'failed' ? <p class="coach-detail">The hint didn't load. Press Hint to try again.</p> : null}
+          {myTurn && hint ? <p class="coach-detail">The arrow shows a good move.</p> : null}
         </Coach>
       )}
 
@@ -277,8 +296,8 @@ export function BotGame() {
                 Try again
               </button>
             ) : null}
-            <button class="button" type="button" onClick={askHint} disabled={!myTurn}>
-              Hint
+            <button class="button" type="button" onClick={askHint} disabled={!myTurn || hintState === 'busy'}>
+              {hintState === 'busy' ? 'Finding hint…' : 'Hint'}
             </button>
             <button class="button" type="button" onClick={takeBack} disabled={thinking || history.length < 2}>
               Take back

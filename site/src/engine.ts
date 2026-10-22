@@ -177,6 +177,11 @@ export class LiveEngine {
     this.ready.catch(() => {});
   }
 
+  /** Resolves once Stockfish has loaded (the first load downloads about 2 MB), so pages can say "loading" rather than "thinking". */
+  whenReady(): Promise<void> {
+    return this.ready;
+  }
+
   /** Searches fen to depth, reporting each deeper result. Resolves null if a later call or stop() replaced it. */
   async analyse(fen: string, depth: number, onUpdate?: (ev: PositionEval) => void, options: SearchOptions = {}): Promise<SearchResult | null> {
     const token = ++this.token;

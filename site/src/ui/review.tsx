@@ -42,8 +42,13 @@ function cacheKey(game: Game, depth: number): string {
 }
 
 function readCache(key: string): (PositionEval | undefined)[] | null {
-  const cached = localStorage.getItem(key);
-  return cached ? JSON.parse(cached) : null;
+  try {
+    const cached = localStorage.getItem(key);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    // Storage off, or a damaged entry: review from scratch.
+    return null;
+  }
 }
 
 export function Review({ pgn, orientation: initialOrientation }: { pgn: string; orientation: 'w' | 'b' }) {
@@ -76,6 +81,9 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   // Read a saved review synchronously so a revisit renders complete on the first frame.
   const [evals, setEvals] = useState<(PositionEval | undefined)[]>(() => readCache(cacheKey(game, depth)) ?? []);
   const [failure, setFailure] = useState<string>();
+  // Try again after a failure keeps the positions already analysed.
+  const [attempt, setAttempt] = useState(0);
+  const partial = useRef<{ key: string; evals: (PositionEval | undefined)[] }>({ key: '', evals: [] });
   const [index, setIndex] = useState(0);
   const [orientation, setOrientation] = useState(initialOrientation);
   const [openings, setOpenings] = useState<Openings | null>(null);
@@ -95,11 +103,12 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
       setEvals(cached);
       return;
     }
-    const result: (PositionEval | undefined)[] = [];
-    setEvals([]);
+    const result: (PositionEval | undefined)[] = partial.current.key === key ? [...partial.current.evals] : [];
+    partial.current = { key, evals: result };
+    setEvals([...result]);
     setFailure(undefined);
     const ctrl = new AbortController();
-    const fens = game.fens.map((fen, i) => (i === total - 1 && game.ending ? null : fen));
+    const fens = game.fens.map((fen, i) => ((i === total - 1 && game.ending) || result[i] ? null : fen));
     analysePositions(
       fens,
       depth,
@@ -119,7 +128,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
       })
       .catch((err) => setFailure(err instanceof Error ? err.message : String(err)));
     return () => ctrl.abort();
-  }, [game, depth]);
+  }, [game, depth, attempt]);
 
 
   const { scores, moves } = useMemo(() => reviewGame(game, evals, openings?.book ?? null), [game, evals, openings]);
@@ -296,7 +305,12 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
         {complete ? <TurningPoints game={game} moves={moves} current={index} onSelect={go} /> : null}
         <p class="progress" role="status">
           {failure ? (
-            <span class="progress-error">Engine stopped: {failure}</span>
+            <span class="progress-error">
+              Engine stopped: {failure}{' '}
+              <button type="button" class="link-button" onClick={() => setAttempt((n) => n + 1)}>
+                Try again
+              </button>
+            </span>
           ) : complete ? (
             `Reviewed at depth ${depth} with Stockfish 19 on your device. Arrows step through moves, N jumps to the next key move, F flips the board.`
           ) : (
@@ -317,7 +331,8 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
             names={names}
             analysed={analysed}
             total={total}
-            running={!failure}
+            failure={failure}
+            onRetry={() => setAttempt((n) => n + 1)}
             onJump={jumpTo}
             onStart={() => go(keyMoments[0] ?? 1)}
           />
@@ -469,11 +484,12 @@ function Report(props: {
   names: { w: string; b: string };
   analysed: number;
   total: number;
-  running: boolean;
+  failure?: string;
+  onRetry: () => void;
   onJump: (grade: Grade, color: 'w' | 'b') => void;
   onStart: () => void;
 }) {
-  const { title, game, moves, accuracy, stats, summary, names, analysed, total, running, onJump, onStart } = props;
+  const { title, game, moves, accuracy, stats, summary, names, analysed, total, failure, onRetry, onJump, onStart } = props;
   const counts = (grade: Grade, color: 'w' | 'b') => game.plies.filter((p, i) => p.color === color && moves[i]?.grade === grade).length;
   const count = (grade: Grade, color: 'w' | 'b') => {
     const n = counts(grade, color);
@@ -501,6 +517,15 @@ function Report(props: {
       <p class="report-game">{title}</p>
       {summary ? (
         <p class="report-coach">{summary}</p>
+      ) : failure ? (
+        <div class="report-failure" role="alert">
+          <p>
+            The review stopped at {analysed} of {total} positions: {failure}
+          </p>
+          <button type="button" class="button" onClick={onRetry}>
+            Try again
+          </button>
+        </div>
       ) : (
         <div class="report-progress">
           <span class="report-label">Reviewing on your device</span>
@@ -515,7 +540,7 @@ function Report(props: {
             aria-valuemin={0}
             aria-valuemax={total}
             aria-valuenow={analysed}
-            data-running={running ? '' : undefined}
+            data-running=""
             style={`--done:${analysed / total}`}
           />
         </div>
@@ -570,6 +595,7 @@ function Report(props: {
           ))}
         </tbody>
       </table>
+      {analysed ? <p class="report-hint">Select a number to jump to those moves.</p> : null}
     </section>
   );
 }

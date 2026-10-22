@@ -199,6 +199,8 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [fenError, setFenError] = useState<string>();
   const [copied, setCopied] = useState<{ what: 'fen' | 'pgn'; ok: boolean } | null>(null);
+  // The line a reset threw away, until anything else changes the board.
+  const [beforeReset, setBeforeReset] = useState<Analysis | null>(null);
 
   const fen = fenAt(line);
   const position = useMemo(() => {
@@ -216,6 +218,12 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
     setDraft(null);
     setFenError(undefined);
     setNotice(undefined);
+    setBeforeReset(null);
+  };
+  const reset = () => {
+    const before = line;
+    change(() => ({ start: DEFAULT_POSITION, moves: [], index: 0 }));
+    if (before.moves.length || before.start !== DEFAULT_POSITION) setBeforeReset(before);
   };
   const go = (i: number) =>
     change((a) => {
@@ -520,9 +528,15 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
                 Review this line
               </a>
             ) : null}
-            <button type="button" class="button" onClick={() => change(() => ({ start: DEFAULT_POSITION, moves: [], index: 0 }))}>
-              Reset to start
-            </button>
+            {beforeReset ? (
+              <button type="button" class="button" onClick={() => change(() => beforeReset)}>
+                Undo reset
+              </button>
+            ) : (
+              <button type="button" class="button" onClick={reset} disabled={!line.moves.length && line.start === DEFAULT_POSITION}>
+                Reset to start
+              </button>
+            )}
           </div>
         </section>
       </aside>

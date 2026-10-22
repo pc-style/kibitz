@@ -66,3 +66,28 @@ export function gamePgn(chess: Chess, bot: Bot, side: Side, result: string): str
   copy.setHeader('Result', result);
   return copy.pgn();
 }
+
+/** The game in progress, kept in the browser so leaving Play (or reloading) doesn't lose it. */
+export interface SavedGame { bot: string; side: Side; moves: string[]; date: string }
+
+const SAVE_KEY = 'kibitz:bot-game';
+
+export function loadSavedGame(): { bot: Bot; side: Side; moves: string[]; date: string } | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null') as SavedGame | null;
+    const bot = BOTS.find((b) => b.id === saved?.bot);
+    if (!saved || !bot || (saved.side !== 'white' && saved.side !== 'black') || !Array.isArray(saved.moves)) return null;
+    return { bot, side: saved.side, moves: saved.moves.filter((m) => typeof m === 'string'), date: String(saved.date ?? '') };
+  } catch {
+    return null;
+  }
+}
+
+export function saveGame(game: SavedGame | null) {
+  try {
+    if (game) localStorage.setItem(SAVE_KEY, JSON.stringify(game));
+    else localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // Storage is off or full: the game still plays, it just won't survive leaving the page.
+  }
+}

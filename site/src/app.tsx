@@ -16,6 +16,7 @@ import { TopNav, type Section } from './ui/nav';
 import { Review } from './ui/review';
 import { reducedMotion } from './ui/theme';
 import { PlayPage } from './play/page';
+import { loadSavedGame } from './play/bots';
 
 const OPERA_GAME = `[Event "Paris"]
 [Site "Paris FRA"]
@@ -121,6 +122,7 @@ function Home() {
   const next = LESSONS.find((l) => !stars[l.id]);
   const knightDots = useMemo(() => ['c2', 'e2', 'b3', 'f3', 'b5', 'f5', 'c6', 'e6'].map(dotShape), []);
   const opera = useOpera();
+  const saved = useMemo(loadSavedGame, []);
 
   return (
     <main class="home home-doors">
@@ -174,7 +176,7 @@ function Home() {
         <div class="door-body">
           <h2>Play</h2>
           <p>Five opponents, from a forgiving first game to a Stockfish challenge. No clock, with hints and takebacks whenever you need them.</p>
-          <span class="door-cta">Choose an opponent →</span>
+          <span class="door-cta">{saved ? `Continue your game vs ${saved.bot.name}` : 'Choose an opponent'} →</span>
         </div>
       </a>
 

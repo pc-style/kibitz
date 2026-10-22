@@ -1612,6 +1612,14 @@ html:not(.theme-reveal) .topbar {
   animation: kb-enter var(--dur) var(--ease-out) both;
 }
 
+.report-failure {
+  display: grid;
+  justify-items: start;
+  gap: calc(var(--space) * 2);
+  color: var(--error);
+  font-size: var(--t-sm);
+}
+
 .report-game {
   margin-top: calc(var(--space) * -2);
   color: var(--muted);
@@ -1725,9 +1733,10 @@ html:not(.theme-reveal) .topbar {
   height: 48px;
 }
 
+/* Counts above zero are buttons that jump to those moves, so they look like it: a raised chip. */
 .report-table td button {
   min-width: 36px;
-  min-height: 24px;
+  min-height: 28px;
   padding: 0 calc(var(--space) * 2);
   overflow: hidden;
   border: 0;
@@ -1739,10 +1748,27 @@ html:not(.theme-reveal) .topbar {
   transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-.report-table td button:hover:not(:disabled) {
+.report-table td button:not(:disabled) {
   background: var(--surface-2);
+  color: var(--fg);
+}
+
+.report-table td button:hover:not(:disabled) {
+  background: var(--surface-hover);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+@media (pointer: coarse) {
+  .report-table td button {
+    min-width: 44px;
+    min-height: 36px;
+  }
+}
+
+.report-hint {
+  color: var(--muted);
+  font-size: var(--t-xs);
 }
 
 .report-table td button:disabled {

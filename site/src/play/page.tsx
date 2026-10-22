@@ -9,17 +9,21 @@ import { Board, type Movable } from '../ui/board';
 import { Piece } from '../ui/piece';
 import { isPromotion, PromotionPicker } from '../ui/promotion';
 import { FriendSetup } from '../online/setup';
-import { BOTS, botMove, gameEnding, gamePgn, takeBack, type Bot, type Side } from './bots';
+import { BOTS, botMove, gameEnding, gamePgn, loadSavedGame, saveGame, takeBack, type Bot, type Side } from './bots';
 import './play.css';
 
 type ColorChoice = Side | 'random';
-interface Match { bot: Bot; side: Side; id: number }
+interface Match { bot: Bot; side: Side; id: number; moves?: string[]; date?: string }
 
 export function PlayPage({ friend = false }: { friend?: boolean }) {
   const [opponent, setOpponent] = useState<'bot' | 'friend'>(friend ? 'friend' : 'bot');
   const [bot, setBot] = useState(BOTS[0]);
   const [color, setColor] = useState<ColorChoice>('white');
-  const [match, setMatch] = useState<Match | null>(null);
+  // A game left half-way comes straight back when you return to Play.
+  const [match, setMatch] = useState<Match | null>(() => {
+    const saved = friend ? null : loadSavedGame();
+    return saved ? { ...saved, id: 0 } : null;
+  });
   const sequence = useRef(0);
   const roster = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<{ top: number; height: number } | null>(null);
@@ -49,7 +53,7 @@ export function PlayPage({ friend = false }: { friend?: boolean }) {
   return (
     <main class={`play-page ${match ? 'play-active' : 'play-setup'}`}>
       {match ? (
-        <MatchGame key={match.id} bot={match.bot} side={match.side} onChoose={() => setMatch(null)} onRematch={() => setMatch({ ...match, id: ++sequence.current })} />
+        <MatchGame key={match.id} bot={match.bot} side={match.side} moves={match.moves} date={match.date} onChoose={() => setMatch(null)} onRematch={() => setMatch({ bot: match.bot, side: match.side, id: ++sequence.current })} />
       ) : (
         <>
           <div class="play-stage play-preview" aria-hidden="true">
@@ -97,11 +101,12 @@ export function PlayPage({ friend = false }: { friend?: boolean }) {
   );
 }
 
-function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; onChoose: () => void; onRematch: () => void }) {
+function MatchGame({ bot, side, moves, date, onChoose, onRematch }: { bot: Bot; side: Side; moves?: string[]; date?: string; onChoose: () => void; onRematch: () => void }) {
   const game = useRef<Chess | null>(null);
   if (!game.current) {
     game.current = new Chess();
-    game.current.setHeader('Date', new Date().toISOString().slice(0, 10).replaceAll('-', '.'));
+    game.current.setHeader('Date', date || new Date().toISOString().slice(0, 10).replaceAll('-', '.'));
+    for (const uci of moves ?? []) if (!playUci(game.current, uci)) break;
   }
   const chess = game.current;
   const engine = useRef<LiveEngine | null>(null);
@@ -110,6 +115,8 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
   const [orientation, setOrientation] = useState(side);
   const [resigned, setResigned] = useState(false);
   const [busy, setBusy] = useState<'bot' | 'hint' | null>(null);
+  const [engineReady, setEngineReady] = useState(false);
+  const [slow, setSlow] = useState(false);
   const [failure, setFailure] = useState(false);
   const [retry, setRetry] = useState(0);
   const [hint, setHint] = useState<{ uci: string; san: string } | null>(null);
@@ -135,11 +142,34 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
     setMoveText('');
     setMoveError('');
   };
-  const getEngine = () => engine.current ?? (engine.current = new LiveEngine());
-  useEffect(() => () => {
-    request.current++;
-    engine.current?.terminate();
+  const getEngine = () => {
+    if (engine.current) return engine.current;
+    const created = (engine.current = new LiveEngine());
+    created.whenReady().then(() => engine.current === created && setEngineReady(true), () => {});
+    return created;
+  };
+  // Start Stockfish as the game opens, so it has loaded by the time it has to reply.
+  useEffect(() => {
+    getEngine();
+    return () => {
+      request.current++;
+      engine.current?.terminate();
+    };
   }, []);
+
+  // Every move is saved; a finished game is not, so returning to Play after it starts fresh.
+  useEffect(() => {
+    if (end) saveGame(null);
+    else saveGame({ bot: bot.id, side, moves: chess.history({ verbose: true }).map((m) => m.lan), date: chess.getHeaders().Date ?? '' });
+  }, [fen, !!end]);
+
+  // A reply that takes far longer than the bot's think time offers a restart.
+  useEffect(() => {
+    setSlow(false);
+    if (busy !== 'bot') return;
+    const timer = setTimeout(() => setSlow(true), engineReady ? 8000 : 15000);
+    return () => clearTimeout(timer);
+  }, [busy, engineReady]);
 
   useEffect(() => {
     if (end || chess.turn() === side[0]) return;
@@ -226,6 +256,8 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
     cancel();
     engine.current?.terminate();
     engine.current = null;
+    setEngineReady(false);
+    getEngine();
     setFailure(false);
     setRetry((n) => n + 1);
   };
@@ -247,8 +279,11 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
   };
   const opponentSide = side === 'white' ? 'black' : 'white';
   const player = (color: Side) => <div class="play-player" data-active={!end && chess.turn() === color[0] ? '' : undefined} data-thinking={!end && color !== side && busy === 'bot' ? '' : undefined}><Piece role={color === side ? 'king' : bot.piece} color={color} /><strong>{color === side ? 'You' : bot.name}</strong><span>{color === side ? `${side === 'white' ? 'White' : 'Black'} · No clock` : bot.level}</span></div>;
-  const status = end?.title ?? (failure ? (myTurn ? 'The hint could not load.' : 'The bot could not reply.') : promoting ? 'Choose your promotion.' : !myTurn ? `${bot.name} is thinking…` : chess.inCheck() ? 'Your move. You are in check.' : 'Your move.');
-  const detail = end?.detail ?? (hint ? `Try ${hint.san}. Follow the arrow on the board.` : busy === 'hint' ? 'Finding a hint…' : failure ? 'Restart the engine to try again. Your game is kept.' : 'Hints and takebacks are always available.');
+  const loading = !engineReady && !failure;
+  const status = end?.title ?? (failure ? (myTurn ? 'The hint could not load.' : 'The bot could not reply.') : promoting ? 'Choose your promotion.' : !myTurn ? (loading ? 'Loading the chess engine…' : `${bot.name} is thinking…`) : chess.inCheck() ? 'Your move. You are in check.' : 'Your move.');
+  const detail = end?.detail ?? (hint ? `Try ${hint.san}. Follow the arrow on the board.` : busy === 'hint' ? 'Finding a hint…' : failure ? 'Restart the engine to try again. Your game is kept.'
+    : slow && busy === 'bot' ? 'This is taking longer than it should. Restart the engine if nothing happens; your game is kept.'
+    : !myTurn && loading ? 'Stockfish downloads to your device the first time, which takes a few seconds.' : 'Hints and takebacks are always available.');
 
   return <>
     <section class="play-stage" aria-label="Game board">
@@ -262,11 +297,11 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
     <section class="play-panel" aria-label="Game controls">
       <header class="play-heading"><h1>You vs {bot.name}</h1><p>{bot.level} opponent</p></header>
       <div class="play-status" role="status" data-ending={end ? '' : undefined}><h2 key={status}>{status}</h2><p key={detail}>{detail}</p></div>
-      {failure && !end ? <button class="button" type="button" onClick={restartEngine}>Restart engine</button> : null}
+      {(failure || (slow && busy === 'bot')) && !end ? <button class="button" type="button" onClick={restartEngine}>Restart engine</button> : null}
       {end ? <div class="play-actions play-end">
         {history.length ? <a class="button button-primary" href={reviewHash(gamePgn(chess, bot, side, end.result), side === 'white' ? 'w' : 'b')}>Review this game</a> : null}
         <button class="button" type="button" onClick={onRematch}>Rematch</button>
-        <button class="button" type="button" onClick={onChoose}>Choose another bot</button>
+        <button class="button" type="button" onClick={onChoose}>New game</button>
       </div> : <>
         <div class="play-actions">
           <button class="button" type="button" disabled={!myTurn || !!promoting || !!confirm || busy === 'hint' || failure} onClick={askHint}>{busy === 'hint' ? 'Finding hint…' : 'Hint'}</button>
@@ -282,12 +317,12 @@ function MatchGame({ bot, side, onChoose, onRematch }: { bot: Bot; side: Side; o
       <div class="play-scoresheet" key="scoresheet"><h2>Moves</h2>{history.length ? <ol ref={list} class="play-moves" aria-label="Moves">
         {history.filter((_, i) => i % 2 === 0).map((m, i) => <li key={i}><span>{i + 1}.</span><span class="play-san" key={m.lan}>{m.san}</span><span class={history[i * 2 + 1] ? 'play-san' : ''} key={history[i * 2 + 1]?.lan ?? 'empty'}>{history[i * 2 + 1]?.san ?? ''}</span></li>)}
       </ol> : <p class="play-note">{side === 'white' ? 'Play your first move on the board or enter it above.' : `${bot.name} plays White and moves first.`}</p>}</div>
-      {confirm && !end ? <div class="play-confirm" role="group" aria-label="Confirm game action"><p>{confirm === 'resign' ? 'Resign this game?' : 'Leave this game and choose another bot?'}</p><div class="play-actions">
+      {confirm && !end ? <div class="play-confirm" role="group" aria-label="Confirm game action"><p>{confirm === 'resign' ? 'Resign this game?' : 'Leave this game and start a new one?'}</p><div class="play-actions">
         <button class="button" type="button" onClick={() => setConfirm(null)}>Keep playing</button>
-        <button class="button" type="button" onClick={() => { cancel(); setPromoting(null); if (confirm === 'resign') { setResigned(true); setConfirm(null); } else onChoose(); }}>{confirm === 'resign' ? 'Yes, resign' : 'Leave game'}</button>
+        <button class="button" type="button" onClick={() => { cancel(); setPromoting(null); if (confirm === 'resign') { setResigned(true); setConfirm(null); } else { saveGame(null); onChoose(); } }}>{confirm === 'resign' ? 'Yes, resign' : 'Leave game'}</button>
       </div></div> : <div class="play-actions play-secondary">
         {history.length ? <button class="button" type="button" onClick={download}>Download PGN</button> : null}
-        {!end ? <><button class="button" type="button" disabled={!!promoting} onClick={() => setConfirm('resign')}>Resign</button><button class="button" type="button" disabled={!!promoting} onClick={() => setConfirm('choose')}>Change bot</button></> : null}
+        {!end ? <><button class="button" type="button" disabled={!!promoting} onClick={() => setConfirm('resign')}>Resign</button><button class="button" type="button" disabled={!!promoting} onClick={() => setConfirm('choose')}>New game</button></> : null}
       </div>}
     </section>
   </>;
