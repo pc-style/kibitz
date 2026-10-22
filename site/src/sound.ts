@@ -91,9 +91,11 @@ for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown'] as const)
 const lastTake = new Map<string, number>();
 const voices: AudioBufferSourceNode[] = [];
 
-function start(sounds: Bank, name: SoundName, pitch: number, delay: number) {
+function start(set: SoundSet, sounds: Bank, name: SoundName, pitch: number, delay: number) {
   const clips = sounds.get(name);
-  if (!ctx || !output || !clips?.length) return;
+  // Checked again here: a download can finish after sound was switched off or another set was chosen.
+  const now = getSettings();
+  if (!ctx || !output || !clips?.length || !now.sound || now.soundSet !== set) return;
   // A different take from last time, so a run of moves sounds like hands, not a machine.
   let take = Math.floor(Math.random() * clips.length);
   if (clips.length > 1 && take === lastTake.get(name)) take = (take + 1) % clips.length;
@@ -123,13 +125,18 @@ export function play(name: SoundName, { pitch = 0, delay = 0 }: { pitch?: number
   // tap; just after a tap means it is starting, and the sound will play the moment it has.
   if (ctx.state !== 'running' && performance.now() - woke > 500) return;
   const sounds = ready.get(soundSet);
-  if (sounds) return start(sounds, name, pitch, delay);
+  if (sounds) return start(soundSet, sounds, name, pitch, delay);
   const asked = performance.now();
   // Still downloading: play it if it arrives soon enough to belong to what just happened.
   bank(soundSet).then(
-    (loaded) => performance.now() - asked < 400 && start(loaded, name, pitch, delay),
+    (loaded) => performance.now() - asked < 400 && start(soundSet, loaded, name, pitch, delay),
     () => {},
   );
+}
+
+/** Stops everything playing or about to play, e.g. a preview's capture and check when sound is switched off. */
+export function hush() {
+  for (const voice of voices.splice(0)) voice.stop();
 }
 
 /** A taste of a set, for the settings panel: a move, a capture and a check. */
@@ -137,10 +144,9 @@ export function preview(set: SoundSet) {
   wake();
   bank(set).then(
     (sounds) => {
-      if (getSettings().soundSet !== set) return;
-      start(sounds, 'move', 0, 0);
-      start(sounds, 'capture', 0, 0.38);
-      start(sounds, 'check', 0, 0.76);
+      start(set, sounds, 'move', 0, 0);
+      start(set, sounds, 'capture', 0, 0.38);
+      start(set, sounds, 'check', 0, 0.76);
     },
     () => {},
   );
@@ -212,6 +218,10 @@ export function moveSound(before: string, after: string, lastMove?: readonly str
   // The board shows whichever piece the pawn became.
   if (promoted && now[to] && now[to] !== piece && (now[to] === now[to].toUpperCase()) === (piece === piece.toUpperCase())) expected[to] = now[to];
   if (expected.some((p, i) => p !== now[i])) return null;
+  // A jump through a repetition (Nf3 Nf6 Ng1 Ng8 e4) can look like one move; the move number gives it away.
+  const [, turn, , , , counted] = before.split(' ');
+  const number = Number(after.split(' ')[5]);
+  if (number && Number(counted) && number !== Number(counted) + (turn === 'b' ? 1 : 0)) return null;
   let check = false;
   try {
     // Practice boards can have no kings, which chess.js only takes unvalidated.

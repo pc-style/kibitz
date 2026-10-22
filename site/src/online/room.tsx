@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { IDLE_MS, timeControl } from '../../convex/timeControls';
 import { destsOf, playUci } from '../learn/play';
 import { useSettings } from '../settings';
-import { endSound, useCue } from '../sound';
+import { endSound, play, useCue } from '../sound';
 import { reviewHash } from '../sources';
 import { Board, type Movable } from '../ui/board';
 import { Piece } from '../ui/piece';
@@ -184,12 +184,15 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
   useCue(`${room.game}:${room.status}`, () => (room.status === 'playing' ? 'start' : room.status === 'over' ? endSound(room.result, you ?? null) : null));
   useCue(opponent && room.drawOffer === opponent ? room.game : null, (offer) => offer !== null && 'notify');
   useCue(opponent && room.rematch === opponent ? room.game : null, (asked) => asked !== null && 'notify');
+  // The game whose low-clock warning has sounded: once a game, not again when an increment lifts the clock back
+  // over the line or a flip moves your clock to the other row. Already low when the page opened counts as warned.
+  const warned = useRef(you && lowClock(room, you, serverNow()) ? room.game : null);
   const status = describe(room, you, names, turn);
 
   return (
     <Shell>
       <section class="play-stage" aria-label="Game board">
-        <PlayerRow room={room} color={other(orientation)} you={you} frozenMs={pending?.clockMs} />
+        <PlayerRow room={room} color={other(orientation)} you={you} frozenMs={pending?.clockMs} warned={warned} />
         <div class="board play-board">
           <Board
             fen={shownFen}
@@ -198,7 +201,7 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
             shapes={[]}
             movable={movable}
             typing
-            sound
+            sound={!promoting}
             coordinates={settings.coordinates}
             animate={settings.motion}
           />
@@ -206,7 +209,7 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
             <PromotionPicker square={promoting.to} color={you} orientation={orientation} onPick={(p) => send(promoting.from, promoting.to, p)} onCancel={() => setPromoting(null)} />
           ) : null}
         </div>
-        <PlayerRow room={room} color={orientation} you={you} frozenMs={pending?.clockMs} />
+        <PlayerRow room={room} color={orientation} you={you} frozenMs={pending?.clockMs} warned={warned} />
       </section>
 
       <section class="play-panel" aria-label="Game">
@@ -397,6 +400,7 @@ function ending(room: RoomView, you: Color | null, names: Record<Color, string>)
 
 /** A clock under this shows red, and yours sounds a warning once when it gets there. */
 const LOW_MS = 20_000;
+const lowClock = (room: RoomView, color: Color, now: number) => room.status === 'playing' && room.clock !== 'none' && clockAt(room, color, now) < LOW_MS;
 
 /** Time on `color`'s clock at server time `now`, never more than the server granted. */
 function clockAt(room: RoomView, color: Color, now: number): number {
@@ -410,7 +414,7 @@ function clockAt(room: RoomView, color: Color, now: number): number {
  * A player's name, presence and clock. Clocks follow the server's turn: while your move is on its way,
  * your clock holds where you stopped it and the opponent's waits until the server starts it.
  */
-function PlayerRow({ room, color, you, frozenMs }: { room: RoomView; color: Color; you: Color | null; frozenMs?: number }) {
+function PlayerRow({ room, color, you, frozenMs, warned }: { room: RoomView; color: Color; you: Color | null; frozenMs?: number; warned: { current: number | null } }) {
   const seat = room[color];
   const [now, setNow] = useState(serverNow);
   const turn: Color = room.moves.length % 2 === 0 ? 'white' : 'black';
@@ -422,7 +426,12 @@ function PlayerRow({ room, color, you, frozenMs }: { room: RoomView; color: Colo
   }, [running]);
   const online = !!seat && now - seat.seenAt < 45_000;
   const ms = frozen ? frozenMs : clockAt(room, color, now);
-  useCue(color === you && room.status === 'playing' && room.clock !== 'none' && ms < LOW_MS ? room.game : null, (low) => low !== null && 'lowtime');
+  const low = color === you && room.status === 'playing' && room.clock !== 'none' && ms < LOW_MS;
+  useEffect(() => {
+    if (!low || warned.current === room.game) return;
+    warned.current = room.game;
+    play('lowtime');
+  }, [low, room.game]);
   return (
     <div class="play-player online-player" data-active={room.status === 'playing' && turn === color ? '' : undefined}>
       <Piece role={color === you ? 'king' : 'pawn'} color={color} />

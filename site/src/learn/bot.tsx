@@ -250,6 +250,7 @@ export function BotGame() {
       shapes={shapes}
       movable={movable}
       typing
+      sound={!promoting}
       overlay={
         promoting && side ? (
           <PromotionPicker

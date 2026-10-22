@@ -23,6 +23,8 @@ const SIDE = { w: 'White', b: 'Black' } as const;
 interface Retry {
   status: 'trying' | 'checking' | 'unchecked' | 'correct' | 'wrong' | 'revealed';
   uci?: string;
+  /** The move it was opened on (the index); it means nothing on any other. */
+  at: number;
 }
 
 /** Grades double-checked with a deeper search before the review is shown as done. */
@@ -106,11 +108,13 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const [openings, setOpenings] = useState<Openings | null>(null);
   // Like chess.com: a report first, then a move-by-move review with a coach comment.
   const [mode, setMode] = useState<'summary' | 'review'>('summary');
-  const [retry, setRetry] = useState<Retry | null>(null);
+  const [retryState, setRetry] = useState<Retry | null>(null);
+  // Stepping to another move clears Retry in an effect, a render later; until then the old attempt is ignored
+  // rather than played on this move's position (where it may not even be legal).
+  const retry = retryState?.at === index ? retryState : null;
   const [showBest, setShowBest] = useState(false);
-  // A Retry answer sounds right or wrong once the verdict is in.
-  const verdict = retry && (retry.status === 'correct' || retry.status === 'wrong') ? `${index}:${retry.uci}:${retry.status}` : null;
-  useCue(verdict, (v) => (v ? (v.endsWith(':correct') ? 'correct' : 'wrong') : null));
+  // A Retry answer sounds right or wrong once the verdict is in (each attempt is a new result object).
+  useCue(retry?.status === 'correct' || retry?.status === 'wrong' ? retry : null, (r) => r && (r.status === 'correct' ? 'correct' : 'wrong'));
 
   useEffect(() => {
     import('../openings.json').then(
@@ -271,10 +275,10 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     const uci = `${orig}${dest}${promotion ?? ''}`;
     // The engine's top move counts, and so does its second choice when it's nearly as good.
     const listed = uci === lines[0].pv[0] || (!!lines[1] && uci === lines[1].pv[0] && lineWin(lines[0]) - lineWin(lines[1]) <= RETRY_SLACK);
-    if (listed || uci === ply.uci) return setRetry({ status: listed ? 'correct' : 'wrong', uci });
+    if (listed || uci === ply.uci) return setRetry({ status: listed ? 'correct' : 'wrong', uci, at: index });
     // Anything else gets its own search: a different move can be just as good.
     const run = ++checking.current;
-    setRetry({ status: 'checking', uci });
+    setRetry({ status: 'checking', uci, at: index });
     // The game up to this move, plus the attempt, so repetitions count as the draws they are.
     const before = game.plies.slice(0, index - 1).map((p) => p.uci);
     const after = new Chess(game.fens[0]);
@@ -282,7 +286,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     // Only if this check is still the one on screen (not cancelled, retried, or left for another move).
     const judge = (win: number) =>
       run === checking.current &&
-      setRetry((r) => (r?.status === 'checking' && r.uci === uci ? { status: lineWin(lines[0]) - win <= RETRY_SLACK ? 'correct' : 'wrong', uci } : r));
+      setRetry((r) => (r?.status === 'checking' && r.uci === uci ? { ...r, status: lineWin(lines[0]) - win <= RETRY_SLACK ? 'correct' : 'wrong' } : r));
     if (after.isCheckmate()) return judge(100);
     if (after.isDraw()) return judge(50);
     (checker.current ??= new LiveEngine())
@@ -291,7 +295,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
       .catch(() => {
         checker.current?.terminate();
         checker.current = null;
-        if (run === checking.current) setRetry((r) => (r?.status === 'checking' && r.uci === uci ? { status: 'unchecked', uci } : r));
+        if (run === checking.current) setRetry((r) => (r?.status === 'checking' && r.uci === uci ? { ...r, status: 'unchecked' } : r));
       });
   };
 
@@ -450,7 +454,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
               showBest={showBest}
               canRetry={canRetry}
               onBest={() => setShowBest((v) => !v)}
-              onRetry={(status) => setRetry(status ? { status } : null)}
+              onRetry={(status) => setRetry(status ? { status, at: index } : null)}
             />
             <p class="visually-hidden" aria-live="polite">
               {announcement}

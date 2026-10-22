@@ -396,7 +396,7 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
               shapes={shapes}
               movable={movable}
               typing
-              sound
+              sound={!promoting}
               coordinates={settings.coordinates}
               animate={settings.motion}
             />

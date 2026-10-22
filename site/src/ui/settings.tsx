@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { DEPTHS, PIECE_SETS, SOUND_SETS, THEMES, updateSettings, useSettings, type Settings, type SoundSet } from '../settings';
-import { preview } from '../sound';
+import { hush, preview } from '../sound';
 import { applyTheme } from './theme';
 
 const TOGGLES: { key: keyof Pick<Settings, 'coordinates' | 'evalBar' | 'arrows' | 'motion'>; label: string }[] = [
@@ -121,6 +121,7 @@ export function SettingsButton() {
                 const on = (e.target as HTMLInputElement).checked;
                 updateSettings({ sound: on });
                 if (on) preview(s.soundSet);
+                else hush();
               }}
             />
           </label>

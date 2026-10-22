@@ -49,8 +49,9 @@ export function LessonBoard(props: {
   lastMove?: Key[];
   shapes: DrawShape[];
   movable?: Movable;
-  /** Boards you play on get the type-a-move field. */
+  /** Boards you play on get the type-a-move field, and make move sounds unless `sound` says otherwise. */
   typing?: boolean;
+  sound?: boolean;
   /** Drawn over the board, e.g. the promotion picker. */
   overlay?: ComponentChildren;
 }) {
@@ -64,8 +65,8 @@ export function LessonBoard(props: {
         shapes={props.shapes}
         movable={props.movable}
         typing={props.typing}
-        // The boards you play on are the ones that make move sounds; demos and questions stay quiet.
-        sound={props.typing}
+        // Demos and questions stay quiet.
+        sound={props.sound ?? props.typing}
         coordinates={settings.coordinates}
         animate={settings.motion}
       />

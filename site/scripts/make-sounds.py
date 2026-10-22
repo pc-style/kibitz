@@ -531,9 +531,9 @@ NAMES = ("move", "capture", "check", "castle", "promote", "start", "win", "lose"
 # louder than a knock that measures the same. A knock's first millisecond is a sharp crack, so this is about as
 # loud as it gets before the limiter has to blunt it.
 LOUDNESS = {
-    "move": -21.0, "capture": -19.5, "check": -19.0, "castle": -21.0, "promote": -20.5,
-    "start": -22.5, "win": -21.5, "lose": -23.0, "draw": -23.0, "notify": -21.5, "lowtime": -19.5,
-    "correct": -23.0, "wrong": -24.0, "star": -24.5,
+    "move": -22.0, "capture": -20.5, "check": -20.0, "castle": -22.0, "promote": -21.5,
+    "start": -23.5, "win": -22.5, "lose": -24.0, "draw": -24.0, "notify": -22.5, "lowtime": -20.5,
+    "correct": -24.0, "wrong": -25.0, "star": -25.5,
 }  # fmt: skip
 # Sustained sounds carry further than knocks at the same level: celesta notes ring on, square waves never decay.
 SET_TRIM = {"chime": -1.5, "retro": -2.5}
@@ -566,9 +566,10 @@ def soft_limit(x: Signal, ceiling: float, knee: float = 0.7) -> Signal:
     return y
 
 
-def master(x: Signal, target: float, peak_db: float = -1.5, floor_db: float = -60.0, longest: float = 2.2) -> tuple[Signal, float]:
+def master(x: Signal, target: float, peak_db: float = -2.5, floor_db: float = -60.0, longest: float = 2.2) -> tuple[Signal, float]:
     """Cleans up the low end, trims the inaudible tail, sets the loudness and keeps peaks under the ceiling.
-    Returns the sound and how many dB the limiter took off its loudest peak."""
+    The ceiling leaves room for MP3 encoding, which overshoots sharp peaks by a dB or so, and for a few sounds
+    overlapping. Returns the sound and how many dB the limiter took off its loudest peak."""
     x = highpass(x, 40)
     x = x[: samples(longest)]
     level = np.abs(x)

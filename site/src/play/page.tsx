@@ -293,7 +293,7 @@ function MatchGame({ bot, side, moves, date, onChoose, onRematch }: { bot: Bot; 
     <section class="play-stage" aria-label="Game board">
       {player(orientation === side ? opponentSide : side)}
       <div class="board play-board">
-        <Board fen={shownFen} orientation={orientation} lastMove={promoting ? [promoting.from, promoting.to] : last ? [last.from, last.to] : undefined} shapes={shapes} movable={movable} coordinates={settings.coordinates} animate={settings.motion} sound />
+        <Board fen={shownFen} orientation={orientation} lastMove={promoting ? [promoting.from, promoting.to] : last ? [last.from, last.to] : undefined} shapes={shapes} movable={movable} coordinates={settings.coordinates} animate={settings.motion} sound={!promoting} />
         {promoting ? <PromotionPicker square={promoting.to} color={side} orientation={orientation} onPick={(piece) => playMine(promoting.from, promoting.to, piece)} onCancel={() => setPromoting(null)} /> : null}
       </div>
       {player(orientation)}
