@@ -13,6 +13,12 @@
 
   --space: 4px;
   --r-sm: 4px;
+
+  /* Page frame: the header and every page share one width, side padding and top gap, so nothing jumps between sections. */
+  --page-max: 1180px;
+  --page-pad: 32px;
+  --page-top: 28px;
+  --header-h: 60px;
   --r-md: 8px;
 
   /* Motion: short and decelerating; nothing here loops except live analysis. */
@@ -289,6 +295,8 @@ html {
   color: var(--fg);
   font: 400 var(--t-base) / 1.5 var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  /* Room for the scrollbar on every page, so short pages don't sit 15px to the right of long ones. */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -538,9 +546,9 @@ textarea {
 
 .settings {
   position: fixed;
-  inset: 64px 20px auto auto;
-  width: min(380px, calc(100vw - 24px));
-  max-height: calc(100svh - 84px);
+  inset: calc(var(--header-h) + 6px) max(var(--page-pad), calc((100% - var(--page-max)) / 2 + var(--page-pad))) auto auto;
+  width: min(380px, calc(100% - 2 * var(--page-pad)));
+  max-height: calc(100svh - var(--header-h) - 24px);
   margin: 0;
   padding: calc(var(--space) * 4);
   overflow-y: auto;
@@ -712,26 +720,41 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
-    'top top'
     'head preview'
     'user pgn'
     'board board'
     'foot foot';
   align-items: start;
   gap: calc(var(--space) * 8) calc(var(--space) * 10);
-  max-width: 1180px;
+  max-width: var(--page-max);
   margin: 0 auto;
-  padding: calc(var(--space) * 10) calc(var(--space) * 8) calc(var(--space) * 14);
+  padding: var(--page-top) var(--page-pad) calc(var(--space) * 14);
 }
 
-.home > .topbar {
-  grid-area: top;
+/* Analysis: what you came to do (your games, a PGN) comes first; the sample review sits beside it. */
+.home-analysis {
+  grid-template-rows: auto auto auto 1fr;
+  grid-template-areas:
+    'head preview'
+    'user preview'
+    'pgn preview'
+    'board preview'
+    'foot foot';
+  row-gap: calc(var(--space) * 6);
+}
+
+.home-analysis .home-head {
+  align-self: start;
+  gap: calc(var(--space) * 4);
+}
+
+.home-analysis .home-head h1 {
+  font-size: clamp(1.9rem, 1.2rem + 1.6vw, 2.6rem);
 }
 
 /* The way in: a headline, then one door per section. */
 .home-doors {
   grid-template-areas:
-    'top top'
     'head head'
     'learn analysis'
     'play play'
@@ -1064,25 +1087,54 @@ textarea {
 
 .review {
   --bar: 28px;
-  --board: min(calc(100svh - 292px), calc(100vw - 498px - var(--bar)));
+  --board: min(calc(100svh - var(--header-h) - var(--page-top) - 217px), calc(100vw - 498px - var(--bar)));
   display: grid;
   grid-template-columns: auto minmax(320px, 400px);
-  grid-template-rows: auto 1fr;
   justify-content: center;
   gap: calc(var(--space) * 4) calc(var(--space) * 8);
-  padding: calc(var(--space) * 4) calc(var(--space) * 6) calc(var(--space) * 6);
+  padding: var(--page-top) var(--page-pad) calc(var(--space) * 6);
 }
 
 .review-no-bar {
   --bar: 0px;
 }
 
+/* The bar: rendered once by the app above every page, same width as the page frame. */
 .topbar {
-  grid-column: 1 / -1;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Page changes crossfade the page only; the bar stays put. Theme reveals still sweep across it. */
+html:not(.theme-reveal) .topbar {
+  view-transition-name: topbar;
+}
+
+::view-transition-old(topbar) {
+  display: none;
+}
+
+::view-transition-new(topbar) {
+  animation: none;
+}
+
+.topbar-inner {
   display: flex;
   align-items: center;
   gap: calc(var(--space) * 5);
-  min-height: 44px;
+  height: var(--header-h);
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 var(--page-pad);
+}
+
+.topbar .icon-button {
+  margin-left: auto;
+}
+
+/* A fixed slot, so the sections don't shift when the wordmark's font arrives. */
+.topbar .logo {
+  flex: none;
+  min-width: 116px;
 }
 
 /* Sections. Puzzles is listed but not built yet. */
@@ -1122,19 +1174,6 @@ textarea {
   font: 600 0.62rem / 1 var(--font-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.topbar-gap {
-  flex: 1;
-}
-
-.topbar-game {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--muted);
 }
 
 .stage {
@@ -1569,6 +1608,12 @@ textarea {
   padding: var(--space);
   overflow-y: auto;
   animation: kb-enter var(--dur) var(--ease-out) both;
+}
+
+.report-game {
+  margin-top: calc(var(--space) * -2);
+  color: var(--muted);
+  font-size: var(--t-sm);
 }
 
 .report-title,
@@ -2020,14 +2065,24 @@ textarea {
 }
 
 @media (max-width: 900px) {
+  :root {
+    --page-pad: 16px;
+    --page-top: 20px;
+  }
+
   .home {
     grid-template-columns: 1fr;
-    grid-template-areas: 'top' 'head' 'preview' 'user' 'pgn' 'board' 'foot';
-    padding: calc(var(--space) * 6) calc(var(--space) * 4) calc(var(--space) * 10);
+    grid-template-areas: 'head' 'preview' 'user' 'pgn' 'board' 'foot';
+    padding-bottom: calc(var(--space) * 10);
   }
 
   .home-doors {
-    grid-template-areas: 'top' 'head' 'learn' 'analysis' 'play' 'foot';
+    grid-template-areas: 'head' 'learn' 'analysis' 'play' 'foot';
+  }
+
+  .home-analysis {
+    grid-template-rows: none;
+    grid-template-areas: 'head' 'user' 'pgn' 'board' 'preview' 'foot';
   }
 
   .door {
@@ -2047,31 +2102,15 @@ textarea {
 
   /* One column, ordered for stepping through on a phone: board, verdict, controls, then the rest. */
   .review {
-    --board: calc(100vw - 2 * var(--space) * 4 - var(--bar));
+    --board: calc(100vw - 2 * var(--page-pad) - var(--bar));
     display: flex;
     flex-direction: column;
     gap: calc(var(--space) * 3);
-    padding: calc(var(--space) * 3) calc(var(--space) * 4) calc(var(--space) * 6);
   }
 
   .stage,
   .panel {
     display: contents;
-  }
-
-  .topbar {
-    order: 0;
-    flex-wrap: wrap;
-    gap: calc(var(--space) * 2) calc(var(--space) * 4);
-  }
-
-  .topbar-game {
-    order: 3;
-    flex-basis: 100%;
-  }
-
-  .topbar .icon-button {
-    margin-left: auto;
   }
 
   .stage > .player:first-child {
@@ -2177,8 +2216,12 @@ html[data-motion='off'] *::after {
     display: none;
   }
 
-  .topbar {
+  .topbar-inner {
     gap: calc(var(--space) * 2);
+  }
+
+  .topbar .logo {
+    min-width: 0;
   }
 }
 

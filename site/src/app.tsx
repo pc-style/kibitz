@@ -10,8 +10,9 @@ import { LessonPage } from './learn/lesson';
 import { LESSONS } from './learn/course';
 import { dotShape } from './learn/play';
 import { useStars } from './learn/progress';
+import { FINAL } from './learn/bot';
 import { AnalysisBoard } from './ui/analysis';
-import { TopNav } from './ui/nav';
+import { TopNav, type Section } from './ui/nav';
 import { Review } from './ui/review';
 import { reducedMotion } from './ui/theme';
 import { PlayPage } from './play/page';
@@ -69,6 +70,21 @@ export function App() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+  return (
+    <>
+      <TopNav current={sectionOf(route)} />
+      <Page route={route} />
+    </>
+  );
+}
+
+function sectionOf(route: Route): Section | undefined {
+  if (route.page === 'learn' || route.page === 'lesson') return 'learn';
+  if (route.page === 'play' || route.page === 'room') return 'play';
+  if (route.page === 'analysis' || route.page === 'board' || route.page === 'review') return 'analysis';
+}
+
+function Page({ route }: { route: Route }) {
   switch (route.page) {
     case 'review':
       return <Review key={route.pgn} pgn={route.pgn} orientation={route.orientation} />;
@@ -108,7 +124,6 @@ function Home() {
 
   return (
     <main class="home home-doors">
-      <TopNav />
       <header class="home-head">
         <h1>
           <span>Learn. Play.</span> <span>Review every game.</span>
@@ -119,7 +134,7 @@ function Home() {
         </p>
       </header>
 
-      <a class="door" href="#/learn">
+      <a class="door" href={`#/learn/${next?.id ?? FINAL.id}`}>
         <div class="door-board">
           <Board fen="8/8/8/8/3N4/8/8/8 w - - 0 1" orientation="white" shapes={knightDots} coordinates={false} />
         </div>
@@ -227,8 +242,7 @@ function Analysis() {
   const opera = useOpera();
 
   return (
-    <main class="home">
-      <TopNav current="analysis" />
+    <main class="home home-analysis">
       <header class="home-head">
         <h1>
           <span>Every move graded.</span> <span>No paywall, no daily limit.</span>

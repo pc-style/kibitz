@@ -12,7 +12,6 @@ import { EvalGraph } from './graph';
 import { GRADE_INFO, GradeIcon, NOTABLE, badgeSvg } from './grades';
 import { useSettings } from '../settings';
 import { Piece } from './piece';
-import { TopNav } from './nav';
 import { reducedMotion } from './theme';
 
 /** Grades where Retry is offered: the moves worth finding again. */
@@ -61,8 +60,8 @@ export function Review({ pgn, orientation: initialOrientation }: { pgn: string; 
       <main class="notice">
         <h1>That game didn't load</h1>
         <p>{parsed.error}</p>
-        <a class="button" href="#">
-          Back to start
+        <a class="button" href="#/analysis">
+          Back to Analysis
         </a>
       </main>
     );
@@ -266,17 +265,16 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const top = orientation === 'w' ? 'b' : 'w';
   const bottom = orientation;
   const score = scores[index];
+  const title = [
+    `${names.w} vs ${names.b}`,
+    h.Result && h.Result !== '*' ? h.Result.replace('1/2-1/2', '½-½') : '',
+    h.Date && !h.Date.includes('?') ? h.Date.replaceAll('.', '-') : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <div class={`review ${settings.evalBar ? '' : 'review-no-bar'}`} ref={root}>
-      <TopNav current="analysis">
-        <p class="topbar-game">
-          {names.w} vs {names.b}
-          {h.Result && h.Result !== '*' ? ` · ${h.Result.replace('1/2-1/2', '½-½')}` : ''}
-          {h.Date && !h.Date.includes('?') ? ` · ${h.Date.replaceAll('.', '-')}` : ''}
-        </p>
-      </TopNav>
-
       <section class="stage">
         <PlayerStrip {...player(top)} color={top} />
         <div class="board-row">
@@ -310,6 +308,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
       <aside class="panel">
         {mode === 'summary' ? (
           <Report
+            title={title}
             game={game}
             moves={moves}
             accuracy={accuracy}
@@ -461,6 +460,7 @@ const PHASE_LABEL = { opening: 'Opening', middlegame: 'Middlegame', endgame: 'En
 
 /** The report: chess.com's summary layout, with the counts doubling as jumps to those moves. */
 function Report(props: {
+  title: string;
   game: Game;
   moves: (MoveReview | undefined)[];
   accuracy?: { w: number; b: number };
@@ -473,7 +473,7 @@ function Report(props: {
   onJump: (grade: Grade, color: 'w' | 'b') => void;
   onStart: () => void;
 }) {
-  const { game, moves, accuracy, stats, summary, names, analysed, total, running, onJump, onStart } = props;
+  const { title, game, moves, accuracy, stats, summary, names, analysed, total, running, onJump, onStart } = props;
   const counts = (grade: Grade, color: 'w' | 'b') => game.plies.filter((p, i) => p.color === color && moves[i]?.grade === grade).length;
   const count = (grade: Grade, color: 'w' | 'b') => {
     const n = counts(grade, color);
@@ -498,6 +498,7 @@ function Report(props: {
   return (
     <section class="report" aria-label="Game review summary">
       <h2 class="report-title">Game Review</h2>
+      <p class="report-game">{title}</p>
       {summary ? (
         <p class="report-coach">{summary}</p>
       ) : (
@@ -519,6 +520,9 @@ function Report(props: {
           />
         </div>
       )}
+      <button type="button" class="button button-primary report-start" onClick={onStart}>
+        Start review
+      </button>
       <table class="report-table">
         <caption class="visually-hidden">Accuracy, moves by grade, and how each phase went. Select a count to jump to the next such move.</caption>
         <thead>
@@ -566,9 +570,6 @@ function Report(props: {
           ))}
         </tbody>
       </table>
-      <button type="button" class="button button-primary report-start" onClick={onStart}>
-        Start review
-      </button>
     </section>
   );
 }

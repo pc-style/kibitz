@@ -3,12 +3,12 @@
 /* No player strips or graph around the board, so it can take more of the height. Phones keep the review's full-width board. */
 @media (min-width: 901px) {
   .analysis {
-    --board: min(calc(100svh - 150px), calc(100vw - 498px - var(--bar)));
+    --board: min(calc(100svh - var(--header-h) - var(--page-top) - 75px), calc(100vw - 498px - var(--bar)));
   }
 }
 
-.analysis .topbar-game {
-  font: inherit;
+.analysis-title {
+  margin: 0;
 }
 
 .analysis .panel {
@@ -67,11 +67,12 @@
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
+/* May wrap ("Starting Stockfish…") on narrow phones rather than push the switch off screen. */
 .analysis-depth {
+  min-width: 0;
   color: var(--muted);
-  font: 400 var(--t-xs) / 1 var(--font-mono);
+  font: 400 var(--t-xs) / 1.3 var(--font-mono);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .analysis-switch.toggle {

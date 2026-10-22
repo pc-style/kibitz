@@ -1,4 +1,3 @@
-import { TopNav } from '../ui/nav';
 import { Piece } from '../ui/piece';
 import { FINAL } from './bot';
 import { COURSE, LESSONS } from './course';
@@ -18,7 +17,6 @@ export function CourseMap() {
 
   return (
     <main class="learn">
-      <TopNav current="learn" />
       <header class="learn-head">
         <h1>Learn chess</h1>
         <p class="home-lede">

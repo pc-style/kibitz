@@ -4,14 +4,13 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { LiveEngine } from '../engine';
 import type { Movable } from '../ui/board';
-import { TopNav } from '../ui/nav';
 import { reducedMotion } from '../ui/theme';
 import { BotGame, FINAL } from './bot';
 import { LESSONS } from './course';
 import { arrowShape, colorOf, destsOf, dotShape, hasKings, loadPosition, play, playUci, starShape, uciOf, whiteToMove } from './play';
 import { saveStars } from './progress';
 import type { CaptureTask, ChooseTask, CollectTask, Demo, Lesson, MateTask, MovesTask, Task } from './types';
-import { Coach, LessonBoard, Shell, Stars, useLater } from './ui';
+import { Coach, focusQuietly, LessonBoard, Shell, Stars, useLater } from './ui';
 import './learn.css';
 
 export function LessonPage({ id }: { id: string }) {
@@ -20,7 +19,6 @@ export function LessonPage({ id }: { id: string }) {
   if (!lesson) {
     return (
       <main class="lesson lesson-missing">
-        <TopNav current="learn" />
         <p>
           That lesson doesn't exist. <a href="#/learn">Back to the course</a>
         </p>
@@ -80,6 +78,7 @@ function Frame({ lesson, step, board, children }: { lesson: Lesson; step: number
     <Shell
       title={lesson.title}
       board={board}
+      intro={step === -1}
       head={
         <ol class="lesson-pips" aria-label={`Part ${Math.min(step + 2, parts)} of ${parts}`}>
           {[-1, ...lesson.tasks.map((_, i) => i)].map((i) => (
@@ -106,7 +105,7 @@ function IntroView({ lesson, step, onStart }: { lesson: Lesson; step: number; on
         ))}
       </Coach>
       <div class="lesson-actions">
-        <button class="button button-primary" type="button" onClick={onStart} autofocus>
+        <button class="button button-primary" type="button" onClick={onStart} ref={focusQuietly}>
           Start
         </button>
         <span class="muted">

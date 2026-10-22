@@ -5,9 +5,9 @@
 .learn {
   display: grid;
   gap: calc(var(--space) * 10);
-  max-width: 1080px;
+  max-width: var(--page-max);
   margin: 0 auto;
-  padding: calc(var(--space) * 10) calc(var(--space) * 8) calc(var(--space) * 14);
+  padding: var(--page-top) var(--page-pad) calc(var(--space) * 14);
 }
 
 .learn-head {
@@ -155,21 +155,16 @@
 /* A lesson: header row, board, coach panel. */
 
 .lesson {
-  --board: min(calc(100svh - 190px), calc(100vw - 500px), 720px);
+  --board: min(calc(100svh - var(--header-h) - var(--page-top) - 115px), calc(100vw - 500px), 720px);
   display: grid;
   grid-template-columns: var(--board) minmax(300px, 380px);
   grid-template-areas:
-    'top top'
     'head head'
     'board panel';
   justify-content: center;
   align-items: start;
   gap: calc(var(--space) * 4) calc(var(--space) * 8);
-  padding: calc(var(--space) * 4) calc(var(--space) * 6) calc(var(--space) * 8);
-}
-
-.lesson > .topbar {
-  grid-area: top;
+  padding: var(--page-top) var(--page-pad) calc(var(--space) * 8);
 }
 
 .lesson-head {
@@ -266,7 +261,7 @@
 
 .lesson-missing {
   grid-template-columns: minmax(0, 640px);
-  grid-template-areas: 'top' 'board';
+  grid-template-areas: none;
 }
 
 /* Multiple-choice answers */
@@ -346,16 +341,20 @@
 @media (max-width: 900px) {
   .learn {
     gap: calc(var(--space) * 8);
-    padding: calc(var(--space) * 6) calc(var(--space) * 4) calc(var(--space) * 10);
+    padding-bottom: calc(var(--space) * 10);
   }
 
   /* Phones: the coach (what to do) sits above the board. */
   .lesson {
-    --board: calc(100vw - 2 * var(--space) * 4);
+    --board: calc(100vw - 2 * var(--page-pad));
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'top' 'head' 'panel' 'board';
+    grid-template-areas: 'head' 'panel' 'board';
     gap: calc(var(--space) * 3);
-    padding: calc(var(--space) * 3) calc(var(--space) * 4) calc(var(--space) * 8);
+  }
+
+  /* Except the explainer, which talks about the board: board first, then the text and Start. */
+  .lesson-intro {
+    grid-template-areas: 'head' 'board' 'panel';
   }
 
   /* The review's phone layout reorders .coach; lessons keep their own order. */

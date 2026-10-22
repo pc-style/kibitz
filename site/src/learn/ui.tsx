@@ -4,15 +4,13 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { useSettings } from '../settings';
 import { Board, type Movable } from '../ui/board';
-import { TopNav } from '../ui/nav';
 import { Piece } from '../ui/piece';
 import './learn.css';
 
 /** A lesson-style page: header row, board on the left, coach panel on the right (stacked on phones). */
-export function Shell({ title, head, board, children }: { title: string; head?: ComponentChildren; board: ComponentChildren; children: ComponentChildren }) {
+export function Shell({ title, head, board, intro, children }: { title: string; head?: ComponentChildren; board: ComponentChildren; intro?: boolean; children: ComponentChildren }) {
   return (
-    <main class="lesson">
-      <TopNav current="learn" />
+    <main class={intro ? 'lesson lesson-intro' : 'lesson'}>
       <div class="lesson-head">
         <a class="lesson-back" href="#/learn">
           ← Course
@@ -25,6 +23,9 @@ export function Shell({ title, head, board, children }: { title: string; head?: 
     </main>
   );
 }
+
+/** Focuses a button for keyboard users without scrolling to it (on phones the explainer's Start sits below the board). */
+export const focusQuietly = (el: HTMLElement | null) => el?.focus({ preventScroll: true });
 
 export type Tone = 'neutral' | 'good' | 'bad';
 

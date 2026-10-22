@@ -8,7 +8,6 @@ import { winChance, type Score } from '../review';
 import { useSettings } from '../settings';
 import { boardHash, reviewHash } from '../sources';
 import { Board, type Movable } from './board';
-import { TopNav } from './nav';
 import { isPromotion, PromotionPicker } from './promotion';
 import { EvalBar, NavIcon } from './review';
 import './analysis.css';
@@ -371,10 +370,6 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
 
   return (
     <div class={`review analysis ${settings.evalBar ? '' : 'review-no-bar'} ${engineOn ? '' : 'analysis-off'}`}>
-      <TopNav current="analysis">
-        <h1 class="topbar-game">Analysis board</h1>
-      </TopNav>
-
       <section class="stage">
         <div class="board-row">
           {settings.evalBar ? <EvalBar score={score} orientation={orientation} /> : null}
@@ -406,6 +401,7 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
       </section>
 
       <aside class="panel">
+        <h1 class="panel-title analysis-title">Analysis board</h1>
         {notice ? (
           <p class="form-error analysis-notice" role="alert">
             That position didn't load ({notice}), so the board starts from the beginning.

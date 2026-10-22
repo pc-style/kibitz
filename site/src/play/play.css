@@ -5,9 +5,9 @@
   align-items: start;
   justify-content: center;
   gap: 24px 32px;
-  max-width: 1120px;
+  max-width: var(--page-max);
   margin: 0 auto;
-  padding: 24px;
+  padding: var(--page-top) var(--page-pad) 40px;
 }
 
 .play-stage { min-width: 0; }
@@ -100,7 +100,7 @@
 @keyframes play-result { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 @media (max-width: 800px) {
-  .play-page { grid-template-columns: minmax(0, 560px); gap: 16px; padding: 16px; }
+  .play-page { grid-template-columns: minmax(0, 560px); gap: 16px; }
   .play-preview { display: none; }
   .play-active .play-stage { animation: kb-fade var(--dur-slow) var(--ease-out); }
   .play-panel { gap: 16px; }
@@ -110,6 +110,5 @@
 }
 
 @media (max-width: 380px) {
-  .play-page { padding: 12px; }
-  .play-page .topnav a { padding-inline: 8px; }
+  .topnav a { padding-inline: 8px; }
 }

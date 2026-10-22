@@ -6,7 +6,6 @@ import { arrowShape, destsOf, playUci } from '../learn/play';
 import { useSettings } from '../settings';
 import { reviewHash } from '../sources';
 import { Board, type Movable } from '../ui/board';
-import { TopNav } from '../ui/nav';
 import { Piece } from '../ui/piece';
 import { isPromotion, PromotionPicker } from '../ui/promotion';
 import { FriendSetup } from '../online/setup';
@@ -49,7 +48,6 @@ export function PlayPage({ friend = false }: { friend?: boolean }) {
 
   return (
     <main class={`play-page ${match ? 'play-active' : 'play-setup'}`}>
-      <TopNav current="play" />
       {match ? (
         <MatchGame key={match.id} bot={match.bot} side={match.side} onChoose={() => setMatch(null)} onRematch={() => setMatch({ ...match, id: ++sequence.current })} />
       ) : (

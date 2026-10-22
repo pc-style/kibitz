@@ -6,7 +6,6 @@ import { destsOf, playUci } from '../learn/play';
 import { useSettings } from '../settings';
 import { reviewHash } from '../sources';
 import { Board, type Movable } from '../ui/board';
-import { TopNav } from '../ui/nav';
 import { Piece } from '../ui/piece';
 import { isPromotion, PromotionPicker } from '../ui/promotion';
 import { errorText, rooms, serverNow, syncServerTime, useConnected, useRoom, type RoomView } from './client';
@@ -70,7 +69,6 @@ export function RoomPage({ code }: { code: string }) {
 function Shell({ children }: { children: preact.ComponentChildren }) {
   return (
     <main class="play-page online-page">
-      <TopNav current="play" />
       {children}
     </main>
   );
