@@ -118,12 +118,15 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
 
   useEffect(() => {
     const key = cacheKey(game, depth);
-    const cached = readCache(key, total);
-    if (cached) {
-      setEvals(cached);
+    // A saved review is used as is only when every position has lines (the last one may be scored by how
+    // the game ended); a partial one is a head start, and the rest is analysed now.
+    const usable = (readCache(key, total) ?? []).map((ev) => (ev?.lines.length ? ev : undefined));
+    if (game.fens.every((_, i) => usable[i] || (i === total - 1 && game.ending))) {
+      setEvals(usable);
       return;
     }
-    const result: (PositionEval | undefined)[] = partial.current.key === key ? [...partial.current.evals] : [];
+    const result: (PositionEval | undefined)[] =
+      partial.current.key === key ? [...partial.current.evals] : usable.some(Boolean) ? usable : [];
     partial.current = { key, evals: result };
     setEvals([...result]);
     setFailure(undefined);
