@@ -158,7 +158,8 @@ function RoomRoute({ code }: { code: string }) {
 /** The way in: Learn, Analysis, and a game against a bot. */
 function Home() {
   const stars = useStars();
-  const done = LESSONS.filter((l) => stars[l.id]).length;
+  // Counted like the course map: every lesson plus the final game.
+  const done = LESSONS.filter((l) => stars[l.id]).length + (stars[FINAL.id] ? 1 : 0);
   const next = LESSONS.find((l) => !stars[l.id]);
   const knightDots = useMemo(() => ['c2', 'e2', 'b3', 'f3', 'b5', 'f5', 'c6', 'e6'].map(dotShape), []);
   const opera = useOpera();
@@ -191,7 +192,7 @@ function Home() {
           </span>
           {done ? (
             <span class="door-meta">
-              {done} of {LESSONS.length} lessons done
+              {done} of {LESSONS.length + 1} done
             </span>
           ) : null}
         </div>
