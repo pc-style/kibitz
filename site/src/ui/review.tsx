@@ -20,7 +20,7 @@ const RETRY: ReadonlySet<Grade> = new Set(['inaccuracy', 'mistake', 'miss', 'blu
 const SIDE = { w: 'White', b: 'Black' } as const;
 
 interface Retry {
-  status: 'trying' | 'checking' | 'correct' | 'wrong' | 'revealed';
+  status: 'trying' | 'checking' | 'unchecked' | 'correct' | 'wrong' | 'revealed';
   uci?: string;
 }
 
@@ -48,10 +48,17 @@ function cacheKey(game: Game, depth: number): string {
   return `kibitz:v1:${depth}:${h.toString(36)}`;
 }
 
-function readCache(key: string): (PositionEval | undefined)[] | null {
+/** A saved evaluation that has the shape the review reads; anything else means the cache is damaged. */
+const isEval = (e: unknown): boolean =>
+  e === null ||
+  (typeof e === 'object' &&
+    Array.isArray((e as PositionEval).lines) &&
+    (e as PositionEval).lines.every((l) => !!l && Array.isArray(l.pv) && (typeof l.cp === 'number' || typeof l.mate === 'number')));
+
+function readCache(key: string, total: number): (PositionEval | undefined)[] | null {
   try {
     const cached: unknown = JSON.parse(localStorage.getItem(key) ?? 'null');
-    return Array.isArray(cached) ? cached : null;
+    return Array.isArray(cached) && cached.length <= total && cached.every(isEval) ? cached : null;
   } catch {
     // Storage off, or a damaged entry: review from scratch.
     return null;
@@ -86,7 +93,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const settings = useSettings();
   const depth = settings.depth;
   // Read a saved review synchronously so a revisit renders complete on the first frame.
-  const [evals, setEvals] = useState<(PositionEval | undefined)[]>(() => readCache(cacheKey(game, depth)) ?? []);
+  const [evals, setEvals] = useState<(PositionEval | undefined)[]>(() => readCache(cacheKey(game, depth), game.fens.length) ?? []);
   const [failure, setFailure] = useState<string>();
   // Try again after a failure keeps the positions already analysed.
   const [attempt, setAttempt] = useState(0);
@@ -111,7 +118,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
 
   useEffect(() => {
     const key = cacheKey(game, depth);
-    const cached = readCache(key);
+    const cached = readCache(key, total);
     if (cached) {
       setEvals(cached);
       return;
@@ -164,7 +171,8 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
 
   const { scores, moves } = useMemo(() => reviewGame(game, evals, openings?.book ?? null), [game, evals, openings]);
   const analysed = scores.filter(Boolean).length;
-  const complete = analysed === total && !rechecking;
+  // Done only once every search, the deeper double-check included, has finished without failing.
+  const complete = analysed === total && !rechecking && !failure;
   const accuracy = useMemo(
     () => (complete ? gameAccuracy(scores as Score[], game.plies[0].color === 'w') : undefined),
     [complete, scores],
@@ -172,7 +180,9 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const stats = useMemo(() => (complete ? playerStats(game, scores as Score[], moves) : undefined), [complete, scores, moves]);
 
   const h = game.headers;
-  const names = { w: h.White || 'White', b: h.Black || 'Black' };
+  // PGN writes an unknown player as "?".
+  const named = (n: string | undefined, fallback: string) => (n && n !== '?' ? n : fallback);
+  const names = { w: named(h.White, 'White'), b: named(h.Black, 'Black') };
   const summary = useMemo(
     () => (accuracy ? summarizeGame(game, moves, accuracy, names) : undefined),
     [accuracy, moves],
@@ -258,8 +268,10 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     // Anything else gets its own search: a different move can be just as good.
     const run = ++checking.current;
     setRetry({ status: 'checking', uci });
-    const after = new Chess(ply.fenBefore);
-    after.move({ from: orig, to: dest, promotion });
+    // The game up to this move, plus the attempt, so repetitions count as the draws they are.
+    const before = game.plies.slice(0, index - 1).map((p) => p.uci);
+    const after = new Chess(game.fens[0]);
+    for (const m of [...before, uci]) after.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] });
     // Only if this check is still the one on screen (not cancelled, retried, or left for another move).
     const judge = (win: number) =>
       run === checking.current &&
@@ -267,11 +279,12 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     if (after.isCheckmate()) return judge(100);
     if (after.isDraw()) return judge(50);
     (checker.current ??= new LiveEngine())
-      .analyse(after.fen(), Math.min(depth, 16))
+      .analyse(after.fen(), Math.min(depth, 16), undefined, { from: game.fens[0], moves: [...before, uci] })
       .then((r) => r?.lines[0] && judge(100 - lineWin(r.lines[0])))
       .catch(() => {
+        checker.current?.terminate();
         checker.current = null;
-        judge(0);
+        if (run === checking.current) setRetry((r) => (r?.status === 'checking' && r.uci === uci ? { status: 'unchecked', uci } : r));
       });
   };
 
@@ -289,7 +302,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
       }
       const uci = retry.status === 'revealed' ? lines[0].pv[0] : retry.uci!;
       const p = play(ply.fenBefore, uci);
-      const shapes = retry.status === 'checking' ? [] : [badge(retry.status === 'wrong' ? 'miss' : 'best', p.to)];
+      const shapes = retry.status === 'checking' || retry.status === 'unchecked' ? [] : [badge(retry.status === 'wrong' ? 'miss' : 'best', p.to)];
       return { fen: p.fen, lastMove: [p.from, p.to], shapes };
     }
     if (ply && showBest && bestUci) {
@@ -758,6 +771,20 @@ function Coach(props: {
       grade = undefined;
       lead = `Checking ${tried}…`;
       detail = 'Stockfish is looking at your move.';
+    } else if (retry.status === 'unchecked') {
+      grade = undefined;
+      lead = `Couldn't check ${tried}.`;
+      detail = "Stockfish didn't answer. Try again, or see the answer.";
+      actions = (
+        <>
+          <button type="button" class="button button-primary" onClick={() => onRetry('trying')}>
+            Try again
+          </button>
+          <button type="button" class="button" onClick={() => onRetry('revealed')}>
+            Show answer
+          </button>
+        </>
+      );
     } else if (retry.status === 'correct') {
       grade = 'best';
       lead = `Correct! ${tried} ${tried === move.best ? 'is the best move' : 'works too'}.`;

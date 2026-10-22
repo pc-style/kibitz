@@ -14,12 +14,16 @@ export interface GameSummary {
   pgn: string;
 }
 
-/** fetch that gives up after a while, so a stalled API ends in a message instead of "Loading…" forever. */
-async function fetchWithin(url: string, init: RequestInit = {}, ms = 15000): Promise<Response> {
+/**
+ * Fetches and reads the whole body, giving up after a while, so a stalled API (even one that stalls
+ * part-way through the body) ends in a message instead of "Loading…" forever.
+ */
+async function fetchWithin(url: string, init: RequestInit = {}, ms = 15000): Promise<{ status: number; ok: boolean; text: string }> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   try {
-    return await fetch(url, { ...init, signal: ctrl.signal });
+    const res = await fetch(url, { ...init, signal: ctrl.signal });
+    return { status: res.status, ok: res.ok, text: await res.text() };
   } catch (err) {
     throw new Error(ctrl.signal.aborted ? 'The games site took too long to answer. Try again in a minute.' : "Couldn't reach the games site. Check your connection.", { cause: err });
   } finally {
@@ -31,7 +35,7 @@ async function getJson<T>(url: string, notFound: string): Promise<T> {
   const res = await fetchWithin(url);
   if (res.status === 404) throw new Error(notFound);
   if (!res.ok) throw new Error(`The games API answered ${res.status}. Try again in a minute.`);
-  return res.json() as Promise<T>;
+  return JSON.parse(res.text) as T;
 }
 
 interface ChesscomGame {
@@ -94,7 +98,7 @@ async function lichessGames(username: string): Promise<GameSummary[]> {
     throw new Error(user?.ok ? "Lichess didn't send that player's games. Try again in a minute, or paste a PGN." : 'No player with that username.');
   }
   if (!res.ok) throw new Error(`Lichess answered ${res.status}. Try again in a minute.`);
-  const text = await res.text();
+  const text = res.text;
   return text
     .split('\n')
     .filter(Boolean)
