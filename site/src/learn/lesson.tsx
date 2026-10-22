@@ -165,8 +165,10 @@ function PracticeView({ lesson, step, task, onNext }: { lesson: Lesson; step: nu
   const [stars, setStars] = useState(initialStars);
   const [moves, setMoves] = useState(0);
   const [lastMove, setLastMove] = useState<Key[]>();
+  const [showHint, setShowHint] = useState(false);
 
   const solved = task.type === 'collect' ? stars.length === 0 : blackPieces(fen) === 0;
+  const teaching = /[RNBQK]/.test(task.fen.split(' ')[0]);
   const over = Math.max(0, moves - task.par);
 
   const movable = useMemo<Movable | undefined>(() => {
@@ -181,7 +183,9 @@ function PracticeView({ lesson, step, task, onNext }: { lesson: Lesson; step: nu
         setFen(whiteToMove(chess.fen()));
         setMoves((n) => n + 1);
         setLastMove([orig, dest]);
-        setStars((s) => s.filter((sq) => sq !== dest));
+        // In a star hunt with a rook, queen, knight or king, the pawns are scenery (they may still move out of
+        // the way): only the piece being taught collects stars.
+        if (m.piece !== 'p' || !teaching) setStars((s) => s.filter((sq) => sq !== dest));
       },
     };
   }, [fen, solved]);
@@ -205,16 +209,23 @@ function PracticeView({ lesson, step, task, onNext }: { lesson: Lesson; step: nu
             {task.explain ? ` ${task.explain}` : ''}
           </p>
         ) : (
-          <p class="coach-line">
-            {task.type === 'collect' ? `${stars.length} ${stars.length === 1 ? 'star' : 'stars'} left · ` : ''}
-            {moves} {moves === 1 ? 'move' : 'moves'} · best is {task.par}
-          </p>
+          <>
+            <p class="coach-line">
+              {task.type === 'collect' ? `${stars.length} ${stars.length === 1 ? 'star' : 'stars'} left · ` : ''}
+              {moves} {moves === 1 ? 'move' : 'moves'} · best is {task.par}
+            </p>
+            {showHint && task.hint ? <p class="coach-detail">{task.hint}</p> : null}
+          </>
         )}
       </Coach>
       <div class="lesson-actions">
         {solved ? (
           <button class="button button-primary" type="button" onClick={() => onNext(over)} autofocus>
             Continue
+          </button>
+        ) : task.hint ? (
+          <button class="button" type="button" onClick={() => setShowHint(true)} disabled={showHint}>
+            Hint
           </button>
         ) : null}
         <button class="button" type="button" onClick={reset} disabled={!moves}>
@@ -432,6 +443,8 @@ function MateView({ lesson, step, task, onNext }: { lesson: Lesson; step: number
     setLastMove(undefined);
     setMoves(0);
     setHint(undefined);
+    // A fresh attempt is judged on its own; hints from the last one don't carry over.
+    setHints(0);
     setReason(undefined);
     setStatus('play');
   };

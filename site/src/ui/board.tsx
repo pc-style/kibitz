@@ -45,7 +45,18 @@ export function Board({ fen, orientation, lastMove, shapes, movable, coordinates
     });
     cg.state.drawable.brushes.best = { key: 'kb', color: '#5fbf7a', opacity: 0.85, lineWidth: 12 };
     api.current = cg;
-    return () => cg.destroy();
+    // Chessground remembers where the board is and re-measures only on scroll and window resize. When
+    // something above it changes height (a lesson's feedback on phones), taps would land on the wrong
+    // squares; measuring again as each touch or click starts keeps them true.
+    const wrap = el.current!;
+    const measure = () => cg.state.dom.bounds.clear();
+    wrap.addEventListener('touchstart', measure, { capture: true, passive: true });
+    wrap.addEventListener('mousedown', measure, { capture: true });
+    return () => {
+      wrap.removeEventListener('touchstart', measure, { capture: true });
+      wrap.removeEventListener('mousedown', measure, { capture: true });
+      cg.destroy();
+    };
   }, []);
 
   // Coordinates are drawn when the board is built, so toggling them needs a full redraw.
@@ -74,10 +85,28 @@ export function Board({ fen, orientation, lastMove, shapes, movable, coordinates
 
   return (
     <>
-      <div ref={el} class={`cg-wrap ${movable ? 'cg-movable' : ''}`} />
+      <div ref={el} class={`cg-wrap ${movable ? 'cg-movable' : ''}`} role="img" aria-label={describe(fen)} />
       {typing ? <MoveEntry fen={fen} movable={movable} /> : null}
     </>
   );
+}
+
+const NAMES: Record<string, string> = { k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn' };
+
+/** The position in words, for screen readers: "White: king e1, rook a1. Black: king e8." */
+function describe(fen: string): string {
+  const side: Record<'w' | 'b', string[]> = { w: [], b: [] };
+  fen
+    .split(' ')[0]
+    .split('/')
+    .forEach((row, r) => {
+      let file = 0;
+      for (const ch of row) {
+        if (/\d/.test(ch)) file += Number(ch);
+        else side[ch === ch.toUpperCase() ? 'w' : 'b'].push(`${NAMES[ch.toLowerCase()]} ${'abcdefgh'[file++]}${8 - r}`);
+      }
+    });
+  return `Chess board. White: ${side.w.join(', ') || 'no pieces'}. Black: ${side.b.join(', ') || 'no pieces'}.`;
 }
 
 /** Reads "e4", "Nxf7+", "O-O", "e2e4" or "e2-e4" as a move for the side that can move. */

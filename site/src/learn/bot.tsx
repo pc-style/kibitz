@@ -46,13 +46,41 @@ function outcome(chess: Chess, side: Side, resigned: boolean) {
   return draw('Fifty moves went by with no capture and no pawn move.');
 }
 
+const SAVE_KEY = 'kibitz:learn-game';
+
+/** The final game in progress, kept so a reload or a look at the course map doesn't lose it. */
+function loadGame(): { side: Side; chess: Chess } | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null') as { side?: unknown; moves?: unknown } | null;
+    if (!saved || (saved.side !== 'white' && saved.side !== 'black') || !Array.isArray(saved.moves)) return null;
+    const chess = new Chess();
+    for (const uci of saved.moves) if (typeof uci !== 'string' || !playUci(chess, uci)) break;
+    return { side: saved.side, chess };
+  } catch {
+    return null;
+  }
+}
+
+function saveGame(game: { side: Side; moves: string[] } | null) {
+  try {
+    if (game) localStorage.setItem(SAVE_KEY, JSON.stringify(game));
+    else localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // Storage off: the game just won't survive leaving the page.
+  }
+}
+
 export function BotGame() {
   const later = useLater();
   const engine = useRef<LiveEngine | null>(null);
-  const game = useRef(new Chess());
-  const [side, setSide] = useState<Side | null>(null);
+  const [saved] = useState(loadGame);
+  const game = useRef(saved?.chess ?? new Chess());
+  const [side, setSide] = useState<Side | null>(saved?.side ?? null);
   const [fen, setFen] = useState(game.current.fen());
-  const [lastMove, setLastMove] = useState<Key[]>();
+  const [lastMove, setLastMove] = useState<Key[] | undefined>(() => {
+    const last = game.current.history({ verbose: true }).at(-1);
+    return last ? [last.from as Key, last.to as Key] : undefined;
+  });
   const [thinking, setThinking] = useState(false);
   const [hint, setHint] = useState<string>();
   const [resigned, setResigned] = useState(false);
@@ -64,6 +92,8 @@ export function BotGame() {
 
   useEffect(() => {
     engine.current = new LiveEngine(4);
+    // A resumed game where the bot was about to move.
+    if (saved && !game.current.isGameOver() && game.current.turn() !== saved.side[0]) botTurn();
     return () => {
       turn.current++;
       engine.current?.terminate();
@@ -77,6 +107,11 @@ export function BotGame() {
   useEffect(() => {
     if (end) saveStars(FINAL.id, end.stars);
   }, [!!end]);
+
+  // Kept while it's being played; a finished game, or the colour choice screen, clears it.
+  useEffect(() => {
+    saveGame(side && !over ? { side, moves: chess.history({ verbose: true }).map(uciOf) } : null);
+  }, [fen, side, over]);
 
   const sync = () => {
     const c = game.current;

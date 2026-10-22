@@ -19,16 +19,35 @@ function load(): Stars {
 let current = load();
 const listeners = new Set<(s: Stars) => void>();
 
+/** Best of both: another tab may have saved lessons this one hasn't seen. */
+const merge = (a: Stars, b: Stars): Stars => {
+  const out = { ...a };
+  for (const [id, n] of Object.entries(b)) out[id] = Math.max(out[id] ?? 0, n);
+  return out;
+};
+
+const announce = () => {
+  for (const listen of listeners) listen(current);
+};
+
+// Lessons finished in another tab show up here too.
+window.addEventListener('storage', (e) => {
+  if (e.key !== KEY) return;
+  current = merge(current, load());
+  announce();
+});
+
 /** Records a finished lesson, keeping the best result. */
 export function saveStars(id: string, stars: number) {
-  if ((current[id] ?? 0) >= stars) return;
+  current = merge(current, load());
+  if ((current[id] ?? 0) >= stars) return announce();
   current = { ...current, [id]: stars };
   try {
     localStorage.setItem(KEY, JSON.stringify(current));
   } catch {
     // Private mode: progress lasts for this visit.
   }
-  for (const listen of listeners) listen(current);
+  announce();
 }
 
 export function useStars(): Stars {
