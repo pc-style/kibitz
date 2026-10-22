@@ -7,6 +7,8 @@ registerHooks({ resolve(specifier, context, next) {
   if (/^\.\.?\//.test(specifier) && !/\.[cm]?[jt]sx?$/.test(specifier)) specifier += '.ts';
   return next(specifier, context);
 } });
+// Vite fills this in at build time (see vite.config.ts); the Node worker below ignores the URL anyway.
+globalThis.__ENGINE_VERSION__ = 'node';
 const { BOTS, botMove, gameEnding, gamePgn, takeBack } = await import('../src/play/bots.ts');
 const { LiveEngine } = await import('../src/engine.ts');
 
