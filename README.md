@@ -7,7 +7,9 @@ Free chess in the browser: lessons from zero, bots, games with friends over a li
 ## Use it
 
 - Load recent games by chess.com or lichess username, or paste a PGN.
+- Play a bot from Play; a game left half-way is kept in your browser and comes back when you return.
 - To play a friend, open Play → A friend, make a link and send it. No accounts; rooms close after 15 minutes without a move.
+- Every board you play on also takes typed moves (e4, Nf3, e2e4): Tab to the field under the board.
 - On chess.com, the extension in [`extension/`](extension) adds a **Free review** button to finished games. Load it in Chrome with `chrome://extensions` → Developer mode → Load unpacked. It refuses games still in progress.
 
 ## Develop

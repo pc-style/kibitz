@@ -71,12 +71,37 @@ export function App() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+  useEffect(() => {
+    document.title = titleOf(route);
+  }, [route]);
   return (
     <>
       <TopNav current={sectionOf(route)} />
       <Page route={route} />
     </>
   );
+}
+
+/** The tab title for each page, so a row of Kibitz tabs can be told apart. */
+function titleOf(route: Route): string {
+  switch (route.page) {
+    case 'learn':
+      return 'Learn chess · Kibitz';
+    case 'lesson':
+      return `${route.id === FINAL.id ? FINAL.title : (LESSONS.find((l) => l.id === route.id)?.title ?? 'Lesson')} · Learn · Kibitz`;
+    case 'play':
+      return route.friend ? 'Play a friend · Kibitz' : 'Play · Kibitz';
+    case 'room':
+      return 'Game with a friend · Kibitz';
+    case 'analysis':
+      return 'Analysis · Kibitz';
+    case 'board':
+      return 'Analysis board · Kibitz';
+    case 'review':
+      return 'Game review · Kibitz';
+    default:
+      return 'Kibitz · learn, play and review chess';
+  }
 }
 
 function sectionOf(route: Route): Section | undefined {

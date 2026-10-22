@@ -1,9 +1,9 @@
 # Kibitz design
 
 ## Discovery
-- **Artifact:** a free chess site in sections: Learn and Analysis now, Play and Puzzles listed as Soon in the top bar until they exist. Not a marketing site.
+- **Artifact:** a free chess site in sections: Learn, Play (bots and friends by link) and Analysis, with Puzzles listed as Soon in the top bar until it exists. Not a marketing site.
 - **Audience:** club players who want chess.com-style game review without paying for it, and people who have never played and want to learn from zero.
-- **Primary actions:** the home page has two doors. Learn opens the course map; Analysis gets a game in front of the review in one step (username list, pasted PGN, or the chess.com extension) or opens the free board.
+- **Primary actions:** the home page has a door per section. Learn opens your next lesson; Play picks a bot or makes a link for a friend (and resumes a bot game left half-way); Analysis gets a game in front of the review in one step (username list, pasted PGN, or the chess.com extension) or opens the free board.
 - **Adjectives:** studious, candid, quick, analog. **Essence:** annotated scoresheet, nocturnal.
 
 ## Aesthetic and signature
