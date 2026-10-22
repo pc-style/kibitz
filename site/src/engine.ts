@@ -18,11 +18,20 @@ export interface SearchResult extends PositionEval {
 export interface SearchOptions {
   skill?: number;
   moveTime?: number;
-  /** Moves from the standard start position, so the engine can see repetitions. */
+  /** Moves played to reach the position, so the engine can see repetitions: from `from`, or the standard start. */
   moves?: string[];
+  from?: string;
 }
 
-const ENGINE_URL = '/engine/stockfish-19-lite-single.js';
+/** A position to analyse in a review: its FEN, plus how the game got there (for repetitions). */
+export interface Position {
+  fen: string;
+  from: string;
+  moves: string[];
+}
+
+declare const __ENGINE_VERSION__: string;
+const ENGINE_URL = `/engine/${__ENGINE_VERSION__}/stockfish-19-lite-single.js`;
 
 function parseInfo(line: string): { depth: number; multipv: number; line: Line } | null {
   if (!line.startsWith('info ')) return null;
@@ -91,7 +100,8 @@ class Engine {
     const lines: Line[] = [];
     let reached = 0;
     let best: string | undefined;
-    const position = options.moves ? `position startpos moves ${options.moves.join(' ')}` : `position fen ${fen}`;
+    const start = options.from ? `position fen ${options.from}` : 'position startpos';
+    const position = options.moves?.length ? `${start} moves ${options.moves.join(' ')}` : `position fen ${fen}`;
     const commands = [
       `setoption name Skill Level value ${options.skill ?? 20}`,
       position,
@@ -128,37 +138,45 @@ class Engine {
  * Positions are handed out in order, so results stream in roughly from the first move to the last.
  */
 export async function analysePositions(
-  fens: (string | null)[],
+  positions: (Position | null)[],
   depth: number,
   onEval: (index: number, ev: PositionEval) => void,
   signal: AbortSignal,
 ): Promise<void> {
-  const queue = fens.flatMap((fen, i) => (fen ? [{ fen, i }] : []));
+  const queue = positions.flatMap((p, i) => (p ? [{ ...p, i }] : []));
   const size = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1, queue.length));
   let next = 0;
+  // One failed engine stops the whole pool, so nothing keeps working on a review that already failed.
+  const pool = new AbortController();
+  const abort = () => pool.abort();
+  signal.addEventListener('abort', abort);
+  let failure: unknown;
 
   const run = async () => {
     const engine = new Engine();
     const stop = () => engine.terminate();
-    signal.addEventListener('abort', stop);
+    pool.signal.addEventListener('abort', stop);
     try {
       await engine.init();
-      while (!signal.aborted && next < queue.length) {
-        const { fen, i } = queue[next++];
-        const ev = await engine.analyse(fen, depth);
-        if (!signal.aborted) onEval(i, ev);
+      while (!pool.signal.aborted && next < queue.length) {
+        const { fen, from, moves, i } = queue[next++];
+        const ev = await engine.analyse(fen, depth, undefined, { from, moves });
+        if (!pool.signal.aborted) onEval(i, ev);
+      }
+    } catch (err) {
+      if (!pool.signal.aborted) {
+        failure = err;
+        pool.abort();
       }
     } finally {
-      signal.removeEventListener('abort', stop);
+      pool.signal.removeEventListener('abort', stop);
       engine.terminate();
     }
   };
 
-  try {
-    await Promise.all(Array.from({ length: size }, run));
-  } catch (err) {
-    if (!signal.aborted) throw err;
-  }
+  await Promise.all(Array.from({ length: size }, run));
+  signal.removeEventListener('abort', abort);
+  if (failure && !signal.aborted) throw failure;
 }
 
 /**

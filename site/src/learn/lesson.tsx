@@ -195,7 +195,7 @@ function PracticeView({ lesson, step, task, onNext }: { lesson: Lesson; step: nu
   };
 
   return (
-    <Frame lesson={lesson} step={step} board={<LessonBoard fen={fen} lastMove={lastMove} shapes={shapes} movable={movable} />}>
+    <Frame lesson={lesson} step={step} board={<LessonBoard fen={fen} lastMove={lastMove} shapes={shapes} movable={movable} typing />}>
       <Coach tone={solved ? 'good' : 'neutral'} lead={solved ? (over ? 'Done.' : 'Perfect.') : task.prompt}>
         {solved ? (
           <p class="coach-detail">
@@ -316,7 +316,7 @@ function MovesView({ lesson, step, task, onNext }: { lesson: Lesson; step: numbe
     <Frame
       lesson={lesson}
       step={step}
-      board={<LessonBoard fen={fen} orientation={learner} lastMove={lastMove} shapes={shapes} movable={movable} />}
+      board={<LessonBoard fen={fen} orientation={learner} lastMove={lastMove} shapes={shapes} movable={movable} typing />}
     >
       <Coach tone={solved ? 'good' : status === 'wrong' ? 'bad' : 'neutral'} lead={lead}>
         {solved && task.explain ? <p class="coach-detail">{task.explain}</p> : null}
@@ -443,7 +443,7 @@ function MateView({ lesson, step, task, onNext }: { lesson: Lesson; step: number
     <Frame
       lesson={lesson}
       step={step}
-      board={<LessonBoard fen={fen} orientation={learner} lastMove={lastMove} shapes={shapes} movable={movable} />}
+      board={<LessonBoard fen={fen} orientation={learner} lastMove={lastMove} shapes={shapes} movable={movable} typing />}
     >
       <Coach
         tone={solved ? 'good' : status === 'failed' ? 'bad' : 'neutral'}

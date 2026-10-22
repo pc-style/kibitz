@@ -43,8 +43,8 @@ function cacheKey(game: Game, depth: number): string {
 
 function readCache(key: string): (PositionEval | undefined)[] | null {
   try {
-    const cached = localStorage.getItem(key);
-    return cached ? JSON.parse(cached) : null;
+    const cached: unknown = JSON.parse(localStorage.getItem(key) ?? 'null');
+    return Array.isArray(cached) ? cached : null;
   } catch {
     // Storage off, or a damaged entry: review from scratch.
     return null;
@@ -93,7 +93,11 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const [showBest, setShowBest] = useState(false);
 
   useEffect(() => {
-    import('../openings.json').then((m) => setOpenings({ book: new Set(m.default.book), names: m.default.names as Record<string, string> }));
+    import('../openings.json').then(
+      (m) => setOpenings({ book: new Set(m.default.book), names: m.default.names as Record<string, string> }),
+      // Offline or a stale tab: review without book moves rather than wait forever.
+      () => setOpenings({ book: new Set(), names: {} }),
+    );
   }, []);
 
   useEffect(() => {
@@ -108,9 +112,12 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     setEvals([...result]);
     setFailure(undefined);
     const ctrl = new AbortController();
-    const fens = game.fens.map((fen, i) => ((i === total - 1 && game.ending) || result[i] ? null : fen));
+    // Each position goes with the moves that reached it, so the engine sees repetitions as draws.
+    const positions = game.fens.map((fen, i) =>
+      (i === total - 1 && game.ending) || result[i] ? null : { fen, from: game.fens[0], moves: game.plies.slice(0, i).map((p) => p.uci) },
+    );
     analysePositions(
-      fens,
+      positions,
       depth,
       (i, ev) => {
         result[i] = ev;

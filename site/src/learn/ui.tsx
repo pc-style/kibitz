@@ -49,6 +49,8 @@ export function LessonBoard(props: {
   lastMove?: Key[];
   shapes: DrawShape[];
   movable?: Movable;
+  /** Boards you play on get the type-a-move field. */
+  typing?: boolean;
   /** Drawn over the board, e.g. the promotion picker. */
   overlay?: ComponentChildren;
 }) {
@@ -61,6 +63,7 @@ export function LessonBoard(props: {
         lastMove={props.lastMove}
         shapes={props.shapes}
         movable={props.movable}
+        typing={props.typing}
         coordinates={settings.coordinates}
         animate={settings.motion}
       />

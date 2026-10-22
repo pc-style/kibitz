@@ -565,6 +565,13 @@ textarea {
   animation: kb-enter var(--dur) var(--ease-out) both;
 }
 
+/* Kept apart from :popover-open: browsers that don't know that selector drop the whole rule. */
+.settings-fallback:not([hidden]) {
+  display: grid;
+  gap: calc(var(--space) * 5);
+  z-index: 20;
+}
+
 .settings section {
   display: grid;
   gap: calc(var(--space) * 2.5);
@@ -1129,7 +1136,7 @@ html:not(.theme-reveal) .topbar {
   padding: 0 var(--page-pad);
 }
 
-.topbar .icon-button {
+.topbar .settings-root {
   margin-left: auto;
 }
 
@@ -2251,6 +2258,60 @@ html[data-motion='off'] *::after {
   .topbar .logo {
     min-width: 0;
   }
+}
+
+/* Typing a move: off screen until it has keyboard focus, then a strip along the bottom of the board. */
+.move-entry {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 4;
+  display: grid;
+  gap: 4px;
+  padding: calc(var(--space) * 2);
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  background: var(--surface);
+  box-shadow: 0 -4px 16px oklch(0 0 0 / 0.25);
+}
+
+.move-entry:not(:focus-within) {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.move-entry label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  font-size: var(--t-sm);
+}
+
+.move-entry input {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--fg);
+  font: 500 var(--t-base) / 1.2 var(--font-mono);
+}
+
+@media (pointer: coarse) {
+  .move-entry input {
+    font-size: 16px;
+  }
+}
+
+.move-entry-error:empty {
+  display: none;
+}
+
+.move-entry-error {
+  color: var(--error);
+  font-size: var(--t-xs);
 }
 
 /* Promotion picker: a column of pieces over the promotion file. */

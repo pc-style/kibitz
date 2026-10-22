@@ -7,7 +7,10 @@ const KEY = 'kibitz:learn';
 
 function load(): Stars {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Stars;
+    const saved: unknown = JSON.parse(localStorage.getItem(KEY) ?? '{}');
+    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {};
+    // Keep only sane entries, so a damaged save can't break the course map or Home.
+    return Object.fromEntries(Object.entries(saved).filter(([, n]) => n === 1 || n === 2 || n === 3)) as Stars;
   } catch {
     return {};
   }

@@ -19,12 +19,17 @@ export function FriendSetup() {
     setProblem(undefined);
     setPlayerName(name);
     // The game server's client loads only when a room is made.
-    const { rooms, errorText } = await import('./client');
+    const client = await import('./client').catch(() => null);
+    if (!client) {
+      setProblem("Couldn't reach Kibitz. Check your connection and try again.");
+      setBusy(false);
+      return;
+    }
     try {
-      const code = await rooms.create({ token: player().token, name, clock, color });
+      const code = await client.rooms.create({ token: player().token, name, clock, color });
       location.hash = roomHash(code);
     } catch (err) {
-      setProblem(errorText(err));
+      setProblem(client.errorText(err));
       setBusy(false);
     }
   };

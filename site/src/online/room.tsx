@@ -190,6 +190,7 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
             lastMove={last ? [last.from as Key, last.to as Key] : undefined}
             shapes={[]}
             movable={movable}
+            typing
             coordinates={settings.coordinates}
             animate={settings.motion}
           />

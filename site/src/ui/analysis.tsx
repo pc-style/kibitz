@@ -388,6 +388,7 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
               lastMove={last ? [last.from, last.to] : undefined}
               shapes={shapes}
               movable={movable}
+              typing
               coordinates={settings.coordinates}
               animate={settings.motion}
             />

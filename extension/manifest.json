@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kibitz: free chess.com game review",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Adds a Free review button to finished chess.com games that opens a move-by-move review on Kibitz, with no daily limit.",
   "content_scripts": [
     {

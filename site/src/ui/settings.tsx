@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { DEPTHS, PIECE_SETS, THEMES, updateSettings, useSettings, type Settings } from '../settings';
 import { applyTheme } from './theme';
 
@@ -8,12 +9,30 @@ const TOGGLES: { key: keyof Pick<Settings, 'coordinates' | 'evalBar' | 'arrows' 
   { key: 'motion', label: 'Animations' },
 ];
 
+/** Safari before 17 has no popover; there the panel opens and closes from state instead. */
+const NATIVE_POPOVER = 'popover' in HTMLElement.prototype;
+
 /** A gear button that opens the settings panel (a native popover, so Esc and outside clicks close it). */
 export function SettingsButton() {
   const s = useSettings();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (NATIVE_POPOVER || !open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onDown = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onDown);
+    };
+  }, [open]);
+  const trigger = NATIVE_POPOVER ? { popovertarget: 'settings' } : { onClick: () => setOpen((o) => !o), 'aria-expanded': open };
+  const panel = NATIVE_POPOVER ? { popover: 'auto' as const } : { hidden: !open, class: 'settings settings-fallback' };
   return (
-    <>
-      <button type="button" class="icon-button" popovertarget="settings" aria-label="Settings" title="Settings">
+    <div class="settings-root" ref={root}>
+      <button type="button" class="icon-button" {...trigger} aria-label="Settings" title="Settings">
         {/* Eight teeth and the hole, all centred on 12,12 so the gear sits dead centre in the button. */}
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <path
@@ -25,7 +44,7 @@ export function SettingsButton() {
           />
         </svg>
       </button>
-      <div id="settings" popover="auto" class="settings" role="dialog" aria-label="Settings">
+      <div id="settings" class="settings" {...panel} role="dialog" aria-label="Settings">
         <section>
           <h2 class="settings-title">Theme</h2>
           <div class="theme-grid" role="radiogroup" aria-label="Theme">
@@ -95,6 +114,6 @@ export function SettingsButton() {
           <p class="settings-note">Deeper is stronger but slower. Each depth's review is saved separately.</p>
         </section>
       </div>
-    </>
+    </div>
   );
 }

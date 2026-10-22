@@ -16,6 +16,27 @@ function convex(): ConvexClient {
   return (client ??= new ConvexClient(url));
 }
 
+// Room pages hold the connection open; half a minute after the last one goes, it closes, so the rest of
+// the site isn't keeping a socket and a timer alive. Coming back within that time reuses it.
+let users = 0;
+let closing: ReturnType<typeof setTimeout> | undefined;
+
+function retain(): () => void {
+  users++;
+  clearTimeout(closing);
+  return () => {
+    if (--users > 0) return;
+    closing = setTimeout(() => {
+      if (users) return;
+      void client?.close();
+      client = null;
+      clearInterval(drift);
+      watching = false;
+      synced = null;
+    }, 30_000);
+  };
+}
+
 /** The words of a server refusal ("It's not your move."), or a generic line for network failures. */
 export function errorText(err: unknown): string {
   if (err instanceof ConvexError && typeof err.data === 'string') return err.data;
@@ -41,8 +62,10 @@ export function useRoom(code: string, token: string): { room: RoomView | null | 
   const [room, setRoom] = useState<RoomView | null | undefined>(undefined);
   const [error, setError] = useState<string>();
   useEffect(() => {
+    const release = retain();
+    let stop = () => {};
     try {
-      return convex().onUpdate(
+      stop = convex().onUpdate(
         api.rooms.get,
         { code, token },
         (r) => {
@@ -54,6 +77,10 @@ export function useRoom(code: string, token: string): { room: RoomView | null | 
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+    return () => {
+      stop();
+      release();
+    };
   }, [code, token]);
   return { room, error };
 }
@@ -90,6 +117,7 @@ export function useConnected(): boolean {
 let anchor = { server: Date.now(), at: performance.now(), wall: Date.now() };
 let synced: Promise<void> | null = null;
 let watching = false;
+let drift: ReturnType<typeof setInterval> | undefined;
 
 /**
  * Some systems pause the monotonic clock while the computer sleeps, which would leave clocks behind with
@@ -99,7 +127,7 @@ function watchForDrift() {
   if (watching) return;
   watching = true;
   let reading = false;
-  setInterval(() => {
+  drift = setInterval(() => {
     const drift = Date.now() - anchor.wall - (performance.now() - anchor.at);
     if (reading || Math.abs(drift) < 1500) return;
     reading = true;

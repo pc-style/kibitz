@@ -20,7 +20,8 @@ export function player(): Player {
   if (current) return current;
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<Player> | null;
-    if (saved?.token) return (current = { token: saved.token, name: saved.name ?? '' });
+    if (typeof saved?.token === 'string' && saved.token.length >= 16)
+      return (current = { token: saved.token, name: typeof saved.name === 'string' ? saved.name : '' });
   } catch {
     // Unreadable or blocked storage: a fresh identity for this visit.
   }

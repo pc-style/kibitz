@@ -46,7 +46,14 @@ function load(): Settings {
   const theme = (document.documentElement.dataset.theme as Theme | undefined) ?? 'classic';
   const defaults: Settings = { theme, pieces: 'cburnett', coordinates: true, evalBar: true, arrows: true, motion: true, depth: 16 };
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Settings>;
+    const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? '{}');
+    // Only keys we know, with the type we expect: a damaged save falls back to defaults key by key.
+    const saved = Object.fromEntries(
+      Object.entries(parsed && typeof parsed === 'object' ? parsed : {}).filter(
+        ([k, v]) => k in defaults && typeof v === typeof defaults[k as keyof Settings],
+      ),
+    ) as Partial<Settings>;
+    if (!PIECE_SETS.some((set) => set.id === saved.pieces)) delete saved.pieces;
     const legacyDepth = Number(localStorage.getItem('kibitz:depth')) || undefined;
     return { ...defaults, depth: legacyDepth ?? defaults.depth, ...saved, theme };
   } catch {

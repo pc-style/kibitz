@@ -78,13 +78,15 @@ function render() {
   document.body.append(button);
 }
 
-async function onClick() {
+async function onClick(event) {
+  // This button, not the module-level one: chess.com may navigate and replace it while the game loads.
+  const el = event.currentTarget;
   const game = currentGame();
-  if (!game || button.disabled) return;
+  if (!game || el.disabled) return;
   // Open the tab inside the click so popup blockers allow it, then point it at the review.
   const tab = window.open('about:blank', '_blank');
-  button.disabled = true;
-  button.textContent = 'Opening…';
+  el.disabled = true;
+  el.textContent = 'Opening…';
   try {
     const url = toReviewUrl(await fetchGame(game));
     if (tab) {
@@ -93,13 +95,13 @@ async function onClick() {
     } else {
       location.href = url;
     }
-    button.textContent = 'Free review';
+    el.textContent = 'Free review';
   } catch (err) {
     tab?.close();
-    button.textContent = err instanceof Error ? err.message : String(err);
-    setTimeout(() => button && (button.textContent = 'Free review'), 4000);
+    el.textContent = err instanceof Error ? err.message : String(err);
+    setTimeout(() => (el.textContent = 'Free review'), 4000);
   } finally {
-    button.disabled = false;
+    el.disabled = false;
   }
 }
 

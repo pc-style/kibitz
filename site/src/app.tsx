@@ -109,9 +109,21 @@ function Page({ route }: { route: Route }) {
 /** A room page, loaded on demand so the realtime client stays out of every other page. */
 function RoomRoute({ code }: { code: string }) {
   const [page, setPage] = useState<{ Room: typeof import('./online/room').RoomPage } | null>(null);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
-    import('./online/room').then((m) => setPage({ Room: m.RoomPage }));
+    // Fails offline, or in a tab left open across a deploy that removed the old file.
+    import('./online/room').then((m) => setPage({ Room: m.RoomPage }), () => setFailed(true));
   }, []);
+  if (failed)
+    return (
+      <main class="notice">
+        <h1>The game didn't load</h1>
+        <p>Check your connection, then reload the page. Your seat in the room is kept.</p>
+        <button class="button button-primary" type="button" onClick={() => location.reload()}>
+          Reload
+        </button>
+      </main>
+    );
   return page ? <page.Room code={code} /> : <main class="play-page" aria-busy="true" />;
 }
 
@@ -207,14 +219,31 @@ function useOpera() {
   }, []);
 }
 
+/** Remembered form values; blocked or full storage just means nothing is remembered. */
+function recall(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function remember(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Not remembered this time.
+  }
+}
+
 const SITES: { id: Site; label: string }[] = [
   { id: 'chesscom', label: 'chess.com' },
   { id: 'lichess', label: 'lichess' },
 ];
 
 function Analysis() {
-  const [site, setSite] = useState<Site>(() => (localStorage.getItem('kibitz:site') as Site) || 'chesscom');
-  const [username, setUsername] = useState(() => localStorage.getItem('kibitz:user') ?? '');
+  const [site, setSite] = useState<Site>(() => (recall('kibitz:site') === 'lichess' ? 'lichess' : 'chesscom'));
+  const [username, setUsername] = useState(() => recall('kibitz:user') ?? '');
   const [games, setGames] = useState<GameSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -224,8 +253,8 @@ function Analysis() {
     e.preventDefault();
     const name = username.trim();
     if (!name) return;
-    localStorage.setItem('kibitz:site', site);
-    localStorage.setItem('kibitz:user', name);
+    remember('kibitz:site', site);
+    remember('kibitz:user', name);
     setLoading(true);
     setError(undefined);
     try {

@@ -15,6 +15,8 @@ type Room = Doc<'rooms'>;
 
 const START = new Chess().fen();
 const CODE_CHARS = '23456789abcdefghjkmnpqrstuvwxyz';
+const MAX_WAITING = 500;
+const MAX_WAITING_EACH = 5;
 /** Closed rooms stay readable for a day ("this room closed"), then go. */
 const DELETE_AFTER_MS = 24 * 60 * 60_000;
 
@@ -173,11 +175,19 @@ export const create = mutation({
   handler: async (ctx, { token, name, clock, color }) => {
     checkToken(token);
     if (!timeControl(clock)) throw new ConvexError('Unknown time control.');
+    // A cheap barrier against scripts filling the database: a few open links per player, and a ceiling for everyone.
+    const now = Date.now();
+    const recent = await ctx.db
+      .query('rooms')
+      .withIndex('by_status_activity', (q) => q.eq('status', 'waiting').gt('lastActivity', now - IDLE_MS))
+      .take(MAX_WAITING + 1);
+    if (recent.length > MAX_WAITING) throw new ConvexError('A lot of new games are being made right now. Try again in a few minutes.');
+    if (recent.filter((r) => r.white?.token === token || r.black?.token === token).length >= MAX_WAITING_EACH)
+      throw new ConvexError('You already have a few game links waiting for a friend. Send one of those, or wait a few minutes.');
     let code = '';
     do {
       code = Array.from({ length: 8 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
     } while (await findRoom(ctx, code));
-    const now = Date.now();
     const side: Color = color === 'random' ? (Math.random() < 0.5 ? 'white' : 'black') : color;
     await ctx.db.insert('rooms', {
       code,
@@ -399,8 +409,12 @@ export const closeIdle = internalMutation({
         .query('rooms')
         .withIndex('by_status_activity', (q) => q.eq('status', status).lt('lastActivity', now - IDLE_MS))
         .take(200);
-      for (const room of idle) await ctx.db.patch(room._id, { status: 'closed', drawOffer: undefined, rematch: undefined });
-      closed += idle.length;
+      for (const room of idle) {
+        // Someone thinking on a running clock isn't idle: the flag check ends that game when their time runs out.
+        if ((timeLeft(room, now) ?? 0) > 0) continue;
+        await ctx.db.patch(room._id, { status: 'closed', drawOffer: undefined, rematch: undefined });
+        closed++;
+      }
     }
     const old = await ctx.db
       .query('rooms')

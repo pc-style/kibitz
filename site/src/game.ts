@@ -54,7 +54,8 @@ export function parseGame(pgn: string): Game {
       legalCount: before.moves().length,
     };
   });
-  const ending = chess.isCheckmate() ? 'mate' : chess.isStalemate() || chess.isInsufficientMaterial() ? 'draw' : null;
+  // isDraw covers stalemate, bare kings, threefold repetition and the fifty-move rule.
+  const ending = chess.isCheckmate() ? 'mate' : chess.isDraw() ? 'draw' : null;
   return { headers, plies, fens: [history[0].before, ...history.map((m) => m.after)], ending };
 }
 
