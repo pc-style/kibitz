@@ -64,6 +64,8 @@ export function LessonBoard(props: {
         shapes={props.shapes}
         movable={props.movable}
         typing={props.typing}
+        // The boards you play on are the ones that make move sounds; demos and questions stay quiet.
+        sound={props.typing}
         coordinates={settings.coordinates}
         animate={settings.motion}
       />

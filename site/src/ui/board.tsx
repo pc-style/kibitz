@@ -4,6 +4,7 @@ import type { Api } from '@lichess-org/chessground/api';
 import type { DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { moveSound, play } from '../sound';
 import { reducedMotion } from './theme';
 
 export interface Movable {
@@ -23,10 +24,13 @@ interface Props {
   animate?: boolean;
   /** Adds a field for typing moves (e4, Nf3, e2e4), hidden until it has keyboard focus. */
   typing?: boolean;
+  /** Each move played here, or stepped through one at a time, makes its sound (move, capture, check…). */
+  sound?: boolean;
 }
 
-export function Board({ fen, orientation, lastMove, shapes, movable, coordinates = true, animate = true, typing = false }: Props) {
+export function Board({ fen, orientation, lastMove, shapes, movable, coordinates = true, animate = true, typing = false, sound = false }: Props) {
   const el = useRef<HTMLDivElement>(null);
+  const shown = useRef(fen);
   const api = useRef<Api | null>(null);
   const onMove = useRef(movable?.onMove);
   onMove.current = movable?.onMove;
@@ -81,6 +85,10 @@ export function Board({ fen, orientation, lastMove, shapes, movable, coordinates
       movable: { color: movable?.color, dests: movable?.dests ?? new Map() },
     });
     api.current?.setAutoShapes(shapes);
+    if (fen === shown.current) return;
+    const cue = sound ? moveSound(shown.current, fen, lastMove) : null;
+    if (cue) play(cue);
+    shown.current = fen;
   }, [fen, orientation, lastMove?.join(), shapes, movable]);
 
   return (

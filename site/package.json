@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "openings": "node scripts/build-openings.mjs",
     "check:course": "node scripts/check-course.mjs",
-    "check:play": "node scripts/check-play.mjs"
+    "check:play": "node scripts/check-play.mjs",
+    "sounds": "uv run scripts/make-sounds.py"
   },
   "dependencies": {
     "@fontsource/martian-mono": "^5.3.0",

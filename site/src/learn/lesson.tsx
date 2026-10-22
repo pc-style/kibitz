@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { LiveEngine } from '../engine';
+import { play as sound, STAR_STEPS } from '../sound';
 import type { Movable } from '../ui/board';
 import { reducedMotion } from '../ui/theme';
 import { BotGame, FINAL } from './bot';
@@ -185,10 +186,15 @@ function PracticeView({ lesson, step, task, onNext }: { lesson: Lesson; step: nu
         setLastMove([orig, dest]);
         // In a star hunt with a rook, queen, knight or king, the pawns are scenery (they may still move out of
         // the way): only the piece being taught collects stars.
-        if (m.piece !== 'p' || !teaching) setStars((s) => s.filter((sq) => sq !== dest));
+        const left = m.piece !== 'p' || !teaching ? stars.filter((sq) => sq !== dest) : stars;
+        setStars(left);
+        // Each star chimes a step higher than the one before.
+        const got = left.length < stars.length;
+        if (got) sound('star', { pitch: STAR_STEPS[Math.min(initialStars.length - left.length - 1, STAR_STEPS.length - 1)] });
+        if (task.type === 'collect' ? !left.length : !blackPieces(chess.fen())) sound('correct', { delay: got ? 0.2 : 0.08 });
       },
     };
-  }, [fen, solved]);
+  }, [fen, solved, stars]);
   const shapes = useMemo(() => stars.map(starShape), [stars]);
 
   const reset = () => {
@@ -285,6 +291,7 @@ function MovesView({ lesson, step, task, onNext }: { lesson: Lesson; step: numbe
         setFen(chess.fen());
         setLastMove([orig, dest]);
         if (!ok) {
+          sound('wrong', { delay: 0.1 });
           setMistakes((n) => n + 1);
           setStatus('wrong');
           setFeedback(wrongMoveNote(chess, goal, task.hint));
@@ -299,6 +306,7 @@ function MovesView({ lesson, step, task, onNext }: { lesson: Lesson; step: numbe
         setReveal(false);
         const reply = task.steps[at].reply;
         if (at === task.steps.length - 1 || !reply) {
+          sound('correct', { delay: 0.08 });
           setStatus('solved');
           return;
         }
@@ -404,9 +412,18 @@ function MateView({ lesson, step, task, onNext }: { lesson: Lesson; step: number
         setLastMove([orig, dest]);
         setMoves(count);
         setHint(undefined);
-        if (chess.isCheckmate()) return setStatus('solved');
-        if (chess.isStalemate()) return fail("Stalemate: the king can't move but isn't in check, so it's a draw.");
-        if (count >= task.limit) return fail(`That's ${count} moves without mate.`);
+        if (chess.isCheckmate()) {
+          sound('correct', { delay: 0.15 });
+          return setStatus('solved');
+        }
+        if (chess.isStalemate()) {
+          sound('wrong', { delay: 0.15 });
+          return fail("Stalemate: the king can't move but isn't in check, so it's a draw.");
+        }
+        if (count >= task.limit) {
+          sound('wrong', { delay: 0.15 });
+          return fail(`That's ${count} moves without mate.`);
+        }
         setStatus('thinking');
         const id = attempt.current;
         engine.current
@@ -419,7 +436,10 @@ function MateView({ lesson, step, task, onNext }: { lesson: Lesson; step: number
               if (id !== attempt.current || !reply) return;
               setFen(chess.fen());
               setLastMove([reply.from as Key, reply.to as Key]);
-              if (chess.isInsufficientMaterial()) return fail('The king took your last attacker, so mate is no longer possible.');
+              if (chess.isInsufficientMaterial()) {
+                sound('wrong', { delay: 0.15 });
+                return fail('The king took your last attacker, so mate is no longer possible.');
+              }
               setStatus('play');
             }, 250);
           })
@@ -520,7 +540,11 @@ function ChooseView({ lesson, step, task, onNext }: { lesson: Lesson; step: numb
               type="button"
               class={`choice ${state ? `choice-${state}` : ''}`}
               disabled={solved || wrong.includes(i)}
-              onClick={() => (i === task.answer ? setSolved(true) : setWrong([...wrong, i]))}
+              onClick={() => {
+                sound(i === task.answer ? 'correct' : 'wrong');
+                if (i === task.answer) setSolved(true);
+                else setWrong([...wrong, i]);
+              }}
             >
               {o}
             </button>
@@ -544,6 +568,10 @@ function DoneView({ lesson, step, mistakes, onRestart }: { lesson: Lesson; step:
   const stars = starsFor(mistakes);
   const i = LESSONS.findIndex((l) => l.id === lesson.id);
   const next = LESSONS[i + 1];
+  // In time with the stars popping in (140 ms apart in learn.css), rising through a major chord.
+  useEffect(() => {
+    for (let n = 0; n < stars; n++) sound('star', { pitch: [0, 4, 7][n], delay: 0.12 + n * 0.14 });
+  }, []);
   return (
     <Frame lesson={lesson} step={step} board={<DemoBoard demo={lesson.intro.demo} />}>
       <div class="lesson-done">

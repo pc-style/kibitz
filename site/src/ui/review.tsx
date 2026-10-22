@@ -11,6 +11,7 @@ import { Board, type Movable } from './board';
 import { EvalGraph } from './graph';
 import { GRADE_INFO, GradeIcon, NOTABLE, badgeSvg } from './grades';
 import { useSettings } from '../settings';
+import { useCue } from '../sound';
 import { Piece } from './piece';
 import { isPromotion, PromotionPicker } from './promotion';
 import { reducedMotion } from './theme';
@@ -107,6 +108,9 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const [mode, setMode] = useState<'summary' | 'review'>('summary');
   const [retry, setRetry] = useState<Retry | null>(null);
   const [showBest, setShowBest] = useState(false);
+  // A Retry answer sounds right or wrong once the verdict is in.
+  const verdict = retry && (retry.status === 'correct' || retry.status === 'wrong') ? `${index}:${retry.uci}:${retry.status}` : null;
+  useCue(verdict, (v) => (v ? (v.endsWith(':correct') ? 'correct' : 'wrong') : null));
 
   useEffect(() => {
     import('../openings.json').then(
@@ -372,6 +376,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
               shapes={view.shapes}
               movable={retryPromotion ? undefined : view.movable}
               typing={!!view.movable}
+              sound
               coordinates={settings.coordinates}
               animate={settings.motion}
             />

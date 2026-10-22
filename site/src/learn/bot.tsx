@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { LiveEngine, type Line, type SearchResult } from '../engine';
 import { reviewHash } from '../sources';
+import { play } from '../sound';
 import type { Movable } from '../ui/board';
 import { isPromotion, PromotionPicker } from '../ui/promotion';
 import { arrowShape, destsOf, playUci, uciOf } from './play';
@@ -105,7 +106,9 @@ export function BotGame() {
   const end = over && side ? outcome(chess, side, resigned) : null;
 
   useEffect(() => {
-    if (end) saveStars(FINAL.id, end.stars);
+    if (!end) return;
+    saveStars(FINAL.id, end.stars);
+    play(end.stars === 3 ? 'win' : end.stars === 2 ? 'draw' : 'lose');
   }, [!!end]);
 
   // Kept while it's being played; a finished game, or the colour choice screen, clears it.
@@ -178,6 +181,7 @@ export function BotGame() {
     setPromoting(null);
     setEngineFailed(false);
     sync();
+    play('start');
     if (s === 'black') botTurn();
   };
 
@@ -202,7 +206,7 @@ export function BotGame() {
       onMove: (orig, dest) => (isPromotion(fen, orig, dest) ? setPromoting({ from: orig, to: dest }) : playMine(orig, dest)),
     };
   }, [fen, myTurn, promoting]);
-  // While the picker is open the board shows the pawn already promoted to a queen.
+  // While the picker is open the board shows the pawn already promoted to a queen, with its move as the last one.
   const shownFen = useMemo(() => (promoting ? new Chess(fen).move({ ...promoting, promotion: 'q' }).after : fen), [fen, promoting]);
 
   const askHint = () => {
@@ -242,7 +246,7 @@ export function BotGame() {
     <LessonBoard
       fen={shownFen}
       orientation={side ?? 'white'}
-      lastMove={lastMove}
+      lastMove={promoting ? [promoting.from, promoting.to] : lastMove}
       shapes={shapes}
       movable={movable}
       typing

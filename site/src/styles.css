@@ -721,6 +721,12 @@ textarea {
   flex: 1;
 }
 
+/* With sound off, the set you'd get stays marked but steps back. */
+.sound-sets[data-off] button[aria-checked='true'] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
 /* Home */
 
 .home {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { IDLE_MS, timeControl } from '../../convex/timeControls';
 import { destsOf, playUci } from '../learn/play';
 import { useSettings } from '../settings';
+import { endSound, useCue } from '../sound';
 import { reviewHash } from '../sources';
 import { Board, type Movable } from '../ui/board';
 import { Piece } from '../ui/piece';
@@ -177,6 +178,12 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
 
   const names = { white: room.white?.name ?? 'Waiting…', black: room.black?.name ?? 'Waiting…' };
   const opponent = you ? other(you) : null;
+
+  // Sounds for what happens while you're here: a game starting (a friend joined, a rematch was accepted), an
+  // offer from the other side, and the ending as it lands.
+  useCue(`${room.game}:${room.status}`, () => (room.status === 'playing' ? 'start' : room.status === 'over' ? endSound(room.result, you ?? null) : null));
+  useCue(opponent && room.drawOffer === opponent ? room.game : null, (offer) => offer !== null && 'notify');
+  useCue(opponent && room.rematch === opponent ? room.game : null, (asked) => asked !== null && 'notify');
   const status = describe(room, you, names, turn);
 
   return (
@@ -187,10 +194,11 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
           <Board
             fen={shownFen}
             orientation={orientation}
-            lastMove={last ? [last.from as Key, last.to as Key] : undefined}
+            lastMove={promoting ? [promoting.from, promoting.to] : last ? [last.from as Key, last.to as Key] : undefined}
             shapes={[]}
             movable={movable}
             typing
+            sound
             coordinates={settings.coordinates}
             animate={settings.motion}
           />
@@ -387,6 +395,9 @@ function ending(room: RoomView, you: Color | null, names: Record<Color, string>)
   }
 }
 
+/** A clock under this shows red, and yours sounds a warning once when it gets there. */
+const LOW_MS = 20_000;
+
 /** Time on `color`'s clock at server time `now`, never more than the server granted. */
 function clockAt(room: RoomView, color: Color, now: number): number {
   const base = color === 'white' ? room.whiteMs : room.blackMs;
@@ -411,6 +422,7 @@ function PlayerRow({ room, color, you, frozenMs }: { room: RoomView; color: Colo
   }, [running]);
   const online = !!seat && now - seat.seenAt < 45_000;
   const ms = frozen ? frozenMs : clockAt(room, color, now);
+  useCue(color === you && room.status === 'playing' && room.clock !== 'none' && ms < LOW_MS ? room.game : null, (low) => low !== null && 'lowtime');
   return (
     <div class="play-player online-player" data-active={room.status === 'playing' && turn === color ? '' : undefined}>
       <Piece role={color === you ? 'king' : 'pawn'} color={color} />
@@ -419,7 +431,7 @@ function PlayerRow({ room, color, you, frozenMs }: { room: RoomView; color: Colo
       {room.clock === 'none' ? (
         <span>{SIDE[color]}</span>
       ) : (
-        <span class={`online-clock ${running ? 'online-clock-running' : ''} ${ms < 20_000 ? 'online-clock-low' : ''}`} role="timer" aria-label={`${SIDE[color]} clock`}>
+        <span class={`online-clock ${running ? 'online-clock-running' : ''} ${ms < LOW_MS ? 'online-clock-low' : ''}`} role="timer" aria-label={`${SIDE[color]} clock`}>
           {formatClock(ms)}
         </span>
       )}

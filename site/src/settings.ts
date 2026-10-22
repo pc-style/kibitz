@@ -23,6 +23,15 @@ export const PIECE_SETS = [
 ] as const;
 export type PieceSet = (typeof PIECE_SETS)[number]['id'];
 
+/** Sound sets in src/sounds, all synthesized by scripts/make-sounds.py. */
+export const SOUND_SETS = [
+  { id: 'wood', label: 'Wood' },
+  { id: 'marble', label: 'Marble' },
+  { id: 'chime', label: 'Chime' },
+  { id: 'retro', label: '8-bit' },
+] as const;
+export type SoundSet = (typeof SOUND_SETS)[number]['id'];
+
 export const DEPTHS = [
   { depth: 12, label: 'Quick' },
   { depth: 16, label: 'Standard' },
@@ -37,6 +46,8 @@ export interface Settings {
   arrows: boolean;
   motion: boolean;
   depth: number;
+  sound: boolean;
+  soundSet: SoundSet;
 }
 
 const KEY = 'kibitz:settings';
@@ -44,7 +55,7 @@ const KEY = 'kibitz:settings';
 function load(): Settings {
   // index.html already picked the theme before first paint; start from what it chose.
   const theme = (document.documentElement.dataset.theme as Theme | undefined) ?? 'classic';
-  const defaults: Settings = { theme, pieces: 'cburnett', coordinates: true, evalBar: true, arrows: true, motion: true, depth: 16 };
+  const defaults: Settings = { theme, pieces: 'cburnett', coordinates: true, evalBar: true, arrows: true, motion: true, depth: 16, sound: true, soundSet: 'wood' };
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? '{}');
     // Only keys we know, with the type we expect: a damaged save falls back to defaults key by key.
@@ -54,6 +65,7 @@ function load(): Settings {
       ),
     ) as Partial<Settings>;
     if (!PIECE_SETS.some((set) => set.id === saved.pieces)) delete saved.pieces;
+    if (!SOUND_SETS.some((set) => set.id === saved.soundSet)) delete saved.soundSet;
     const legacyDepth = Number(localStorage.getItem('kibitz:depth')) || undefined;
     return { ...defaults, depth: legacyDepth ?? defaults.depth, ...saved, theme };
   } catch {

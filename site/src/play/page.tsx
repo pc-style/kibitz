@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { LiveEngine } from '../engine';
 import { arrowShape, destsOf, playUci } from '../learn/play';
 import { useSettings } from '../settings';
+import { endSound, play, useCue } from '../sound';
 import { reviewHash } from '../sources';
 import { Board, type Movable } from '../ui/board';
 import { Piece } from '../ui/piece';
@@ -150,12 +151,15 @@ function MatchGame({ bot, side, moves, date, onChoose, onRematch }: { bot: Bot; 
   };
   // Start Stockfish as the game opens, so it has loaded by the time it has to reply.
   useEffect(() => {
+    if (!moves?.length) play('start');
     getEngine();
     return () => {
       request.current++;
       engine.current?.terminate();
     };
   }, []);
+
+  useCue(end?.result, (result) => (result ? endSound(result, side) : null));
 
   // Every move is saved; a finished game is not, so returning to Play after it starts fresh.
   useEffect(() => {
@@ -289,7 +293,7 @@ function MatchGame({ bot, side, moves, date, onChoose, onRematch }: { bot: Bot; 
     <section class="play-stage" aria-label="Game board">
       {player(orientation === side ? opponentSide : side)}
       <div class="board play-board">
-        <Board fen={shownFen} orientation={orientation} lastMove={last ? [last.from, last.to] : undefined} shapes={shapes} movable={movable} coordinates={settings.coordinates} animate={settings.motion} />
+        <Board fen={shownFen} orientation={orientation} lastMove={promoting ? [promoting.from, promoting.to] : last ? [last.from, last.to] : undefined} shapes={shapes} movable={movable} coordinates={settings.coordinates} animate={settings.motion} sound />
         {promoting ? <PromotionPicker square={promoting.to} color={side} orientation={orientation} onPick={(piece) => playMine(promoting.from, promoting.to, piece)} onCancel={() => setPromoting(null)} /> : null}
       </div>
       {player(orientation)}

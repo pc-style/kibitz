@@ -392,10 +392,11 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
             <Board
               fen={shownFen}
               orientation={orientation === 'w' ? 'white' : 'black'}
-              lastMove={last ? [last.from, last.to] : undefined}
+              lastMove={promoting ? [promoting.from, promoting.to] : last ? [last.from, last.to] : undefined}
               shapes={shapes}
               movable={movable}
               typing
+              sound
               coordinates={settings.coordinates}
               animate={settings.motion}
             />

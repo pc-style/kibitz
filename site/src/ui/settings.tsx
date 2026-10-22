@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { DEPTHS, PIECE_SETS, THEMES, updateSettings, useSettings, type Settings } from '../settings';
+import { DEPTHS, PIECE_SETS, SOUND_SETS, THEMES, updateSettings, useSettings, type Settings, type SoundSet } from '../settings';
+import { preview } from '../sound';
 import { applyTheme } from './theme';
 
 const TOGGLES: { key: keyof Pick<Settings, 'coordinates' | 'evalBar' | 'arrows' | 'motion'>; label: string }[] = [
@@ -8,6 +9,12 @@ const TOGGLES: { key: keyof Pick<Settings, 'coordinates' | 'evalBar' | 'arrows' 
   { key: 'arrows', label: 'Best-move arrows' },
   { key: 'motion', label: 'Animations' },
 ];
+
+/** Choosing a set turns sound on if it was off, and plays a sample of it. */
+function pickSound(set: SoundSet) {
+  updateSettings({ sound: true, soundSet: set });
+  preview(set);
+}
 
 /** Safari before 17 has no popover; there the panel opens and closes from state instead. */
 const NATIVE_POPOVER = 'popover' in HTMLElement.prototype;
@@ -100,6 +107,31 @@ export function SettingsButton() {
               </label>
             ))}
           </div>
+        </section>
+
+        <section>
+          <h2 class="settings-title">Sound</h2>
+          <label class="toggle">
+            <span>Sound effects</span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={s.sound}
+              onChange={(e) => {
+                const on = (e.target as HTMLInputElement).checked;
+                updateSettings({ sound: on });
+                if (on) preview(s.soundSet);
+              }}
+            />
+          </label>
+          <div class="segmented segmented-wide sound-sets" role="radiogroup" aria-label="Sound set" data-off={s.sound ? undefined : ''}>
+            {SOUND_SETS.map((set) => (
+              <button key={set.id} type="button" role="radio" aria-checked={s.soundSet === set.id} onClick={() => pickSound(set.id)}>
+                {set.label}
+              </button>
+            ))}
+          </div>
+          <p class="settings-note">Pick a set to hear a move, a capture and a check. Lessons and game endings have their own sounds too.</p>
         </section>
 
         <section>
