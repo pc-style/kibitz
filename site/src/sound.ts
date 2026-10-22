@@ -91,7 +91,7 @@ for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown'] as const)
 const lastTake = new Map<string, number>();
 const voices: AudioBufferSourceNode[] = [];
 
-function start(set: SoundSet, sounds: Bank, name: SoundName, pitch: number, delay: number) {
+function start(set: SoundSet, sounds: Bank, name: SoundName, pitch: number, delay: number): AudioBufferSourceNode | undefined {
   const clips = sounds.get(name);
   // Checked again here: a download can finish after sound was switched off or another set was chosen.
   const now = getSettings();
@@ -112,6 +112,7 @@ function start(set: SoundSet, sounds: Bank, name: SoundName, pitch: number, dela
   voices.push(source);
   // Holding an arrow key through a game would pile up dozens of knocks; only the latest few ring on.
   while (voices.length > 6) voices.shift()!.stop();
+  return source;
 }
 
 /**
@@ -139,14 +140,21 @@ export function hush() {
   for (const voice of voices.splice(0)) voice.stop();
 }
 
-/** A taste of a set, for the settings panel: a move, a capture and a check. */
+let sample: AudioBufferSourceNode[] = [];
+let samples = 0;
+
+/**
+ * A taste of a set, for the settings panel: a move, a capture and a check. Picking another set cuts the last
+ * sample short, and a set that finishes downloading after another was picked doesn't play at all.
+ */
 export function preview(set: SoundSet) {
   wake();
+  const run = ++samples;
+  for (const voice of sample.splice(0)) voice.stop();
   bank(set).then(
     (sounds) => {
-      start(set, sounds, 'move', 0, 0);
-      start(set, sounds, 'capture', 0, 0.38);
-      start(set, sounds, 'check', 0, 0.76);
+      if (run !== samples) return;
+      sample = [start(set, sounds, 'move', 0, 0), start(set, sounds, 'capture', 0, 0.38), start(set, sounds, 'check', 0, 0.76)].filter((v) => !!v);
     },
     () => {},
   );
