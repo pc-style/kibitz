@@ -14,8 +14,21 @@ export interface GameSummary {
   pgn: string;
 }
 
+/** fetch that gives up after a while, so a stalled API ends in a message instead of "Loading…" forever. */
+async function fetchWithin(url: string, init: RequestInit = {}, ms = 15000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } catch (err) {
+    throw new Error(ctrl.signal.aborted ? 'The games site took too long to answer. Try again in a minute.' : "Couldn't reach the games site. Check your connection.", { cause: err });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function getJson<T>(url: string, notFound: string): Promise<T> {
-  const res = await fetch(url);
+  const res = await fetchWithin(url);
   if (res.status === 404) throw new Error(notFound);
   if (!res.ok) throw new Error(`The games API answered ${res.status}. Try again in a minute.`);
   return res.json() as Promise<T>;
@@ -74,8 +87,12 @@ const lichessName = (p: LichessGame['players']['white']) => p.user?.name ?? (p.a
 
 async function lichessGames(username: string): Promise<GameSummary[]> {
   const url = `https://lichess.org/api/games/user/${encodeURIComponent(username)}?max=40&pgnInJson=true&clocks=false&evals=false&literate=false`;
-  const res = await fetch(url, { headers: { Accept: 'application/x-ndjson' } });
-  if (res.status === 404) throw new Error('No player with that username.');
+  const res = await fetchWithin(url, { headers: { Accept: 'application/x-ndjson' } }, 30000);
+  if (res.status === 404) {
+    // Lichess also answers 404 to requests it won't serve (it turns away some automated browsers), so check the player exists.
+    const user = await fetchWithin(`https://lichess.org/api/user/${encodeURIComponent(username)}`).catch(() => null);
+    throw new Error(user?.ok ? "Lichess didn't send that player's games. Try again in a minute, or paste a PGN." : 'No player with that username.');
+  }
   if (!res.ok) throw new Error(`Lichess answered ${res.status}. Try again in a minute.`);
   const text = await res.text();
   return text

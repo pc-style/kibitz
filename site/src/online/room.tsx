@@ -79,7 +79,11 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
   const settings = useSettings();
   const you = room.you;
   const seated = !!you;
-  const [orientation, setOrientation] = useState<Color>(you ?? 'white');
+  // Your side at the bottom unless you flipped; a flip lasts for one game. Derived, so a rematch that swaps
+  // colors turns the board in the same render instead of a frame later.
+  const [flipped, setFlipped] = useState<{ game: number; on: boolean }>({ game: room.game, on: false });
+  const flip = flipped.game === room.game && flipped.on;
+  const orientation: Color = flip ? other(you ?? 'white') : (you ?? 'white');
   // A move sent but not yet confirmed, with your clock as it stood when you let go of the piece.
   const [pending, setPending] = useState<{ ply: number; uci: string; clockMs: number } | null>(null);
   const [picking, setPromoting] = useState<{ from: Key; to: Key; ply: number } | null>(null);
@@ -87,11 +91,6 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string>();
   const list = useRef<HTMLOListElement>(null);
-
-  // A rematch swaps colors; turn the board to your new side.
-  useEffect(() => {
-    if (you) setOrientation(you);
-  }, [you, room.game]);
 
   // The server's next update supersedes a move we drew early, including a game that ended on time instead.
   useEffect(() => setPending(null), [room.moves.length, room.game, room.status]);
@@ -134,7 +133,8 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
       setBusy(false);
     }
   };
-  const args = { code, token: me.token };
+  // The game number goes with every action, so one sent from a stale tab can't hit the game after a rematch.
+  const args = { code, token: me.token, game: room.game };
 
   const send = (from: Key, to: Key, promotion = 'q') => {
     setPromoting(null);
@@ -210,6 +210,11 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
             {you || room.status === 'waiting' ? '' : ' · watching'}
           </p>
         </header>
+        {room.status === 'playing' && !room.moves.length && you && room.clockBy && room.clockBy !== you ? (
+          <p class="play-note online-clock-note" role="status">
+            {names[room.clockBy]} set the time to {clockLabel(room.clock)}.
+          </p>
+        ) : null}
 
         {!connected ? (
           <p class="online-offline" role="status">
@@ -291,7 +296,7 @@ function Room({ room, code, connected }: { room: RoomView; code: string; connect
               <button class="button" type="button" disabled={busy} onClick={() => setConfirm(true)}>
                 Resign
               </button>
-              <button class="button" type="button" onClick={() => setOrientation(other(orientation))}>
+              <button class="button" type="button" onClick={() => setFlipped({ game: room.game, on: !flip })}>
                 Flip board
               </button>
             </div>
@@ -533,7 +538,7 @@ function NameField({ room, code, you }: { room: RoomView; code: string; you: Col
 function ClockPicker({ room, code }: { room: RoomView; code: string }) {
   const [problem, setProblem] = useState<string>();
   const pick = (clock: string) =>
-    rooms.setClock({ code, token: player().token, clock }).then(
+    rooms.setClock({ code, token: player().token, clock, game: room.game }).then(
       () => setProblem(undefined),
       (err) => setProblem(errorText(err)),
     );
@@ -569,8 +574,10 @@ function gamePgn(room: RoomView, names: Record<Color, string>): string {
   const chess = replay(room.moves);
   chess.setHeader('Event', 'Kibitz game with a friend');
   chess.setHeader('Date', new Date().toISOString().slice(0, 10).replaceAll('-', '.'));
-  chess.setHeader('White', names.white);
-  chess.setHeader('Black', names.black);
+  // A PGN tag can't hold a double quote or backslash as typed; names may have either.
+  const tag = (name: string) => name.replaceAll('\\', '/').replaceAll('"', "'");
+  chess.setHeader('White', tag(names.white));
+  chess.setHeader('Black', tag(names.black));
   chess.setHeader('Result', room.result && room.result !== '*' ? room.result : '*');
   if (room.clock !== 'none') {
     const t = timeControl(room.clock)!;

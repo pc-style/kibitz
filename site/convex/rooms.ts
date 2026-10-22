@@ -43,11 +43,13 @@ async function findRoom(ctx: QueryCtx, code: string) {
 }
 
 /** The room and the caller's seat, for actions only a seated player may take. */
-async function playerRoom(ctx: MutationCtx, code: string, token: string): Promise<{ room: Room; me: Color }> {
+async function playerRoom(ctx: MutationCtx, code: string, token: string, game?: number): Promise<{ room: Room; me: Color }> {
   checkToken(token);
   const room = await findRoom(ctx, code);
   if (!room) throw new ConvexError('This room does not exist.');
   if (room.status === 'closed') throw new ConvexError('This room has closed.');
+  // A click from a tab that was behind (offline, asleep) mustn't land on the next game after a rematch.
+  if (game !== undefined && game !== room.game) throw new ConvexError('That was for the previous game, so nothing happened.');
   const me = seatOf(room, token);
   if (!me) throw new ConvexError('You are watching this game, not playing in it.');
   return { room, me };
@@ -157,6 +159,7 @@ export const get = query({
       turnStartedAt: room.turnStartedAt,
       drawOffer: room.drawOffer ?? null,
       rematch: room.rematch ?? null,
+      clockBy: room.clockBy ?? null,
       lastActivity: room.lastActivity,
       white: seat(room.white),
       black: seat(room.black),
@@ -242,12 +245,12 @@ export const setName = mutation({
 
 /** Either player may change the time mode until the first move of a game. */
 export const setClock = mutation({
-  args: { code: v.string(), token: v.string(), clock: v.string() },
-  handler: async (ctx, { code, token, clock }) => {
-    const { room } = await playerRoom(ctx, code, token);
+  args: { code: v.string(), token: v.string(), clock: v.string(), game: v.optional(v.number()) },
+  handler: async (ctx, { code, token, clock, game }) => {
+    const { room, me } = await playerRoom(ctx, code, token, game);
     if (!timeControl(clock)) throw new ConvexError('Unknown time control.');
     if (room.status === 'over' || room.moves.length) throw new ConvexError('The time can only change before the first move.');
-    await ctx.db.patch(room._id, { clock, whiteMs: initialMs(clock), blackMs: initialMs(clock), lastActivity: Date.now() });
+    await ctx.db.patch(room._id, { clock, clockBy: me, whiteMs: initialMs(clock), blackMs: initialMs(clock), lastActivity: Date.now() });
   },
 });
 
@@ -266,9 +269,9 @@ export const heartbeat = mutation({
 // ---------------------------------------------------------------- playing
 
 export const move = mutation({
-  args: { code: v.string(), token: v.string(), uci: v.string(), ply: v.number() },
-  handler: async (ctx, { code, token, uci, ply }) => {
-    const { room, me } = await playerRoom(ctx, code, token);
+  args: { code: v.string(), token: v.string(), uci: v.string(), ply: v.number(), game: v.optional(v.number()) },
+  handler: async (ctx, { code, token, uci, ply, game }) => {
+    const { room, me } = await playerRoom(ctx, code, token, game);
     if (room.status !== 'playing') throw new ConvexError('This game is not in progress.');
     if (ply !== room.moves.length) throw new ConvexError('The board changed. Try that move again.');
     if (turnOf(room) !== me) throw new ConvexError("It's not your move.");
@@ -320,9 +323,9 @@ export const flag = internalMutation({
 });
 
 export const resign = mutation({
-  args: { code: v.string(), token: v.string() },
-  handler: async (ctx, { code, token }) => {
-    const { room, me } = await playerRoom(ctx, code, token);
+  args: { code: v.string(), token: v.string(), game: v.optional(v.number()) },
+  handler: async (ctx, { code, token, game }) => {
+    const { room, me } = await playerRoom(ctx, code, token, game);
     if (room.status !== 'playing') throw new ConvexError('This game is not in progress.');
     const now = Date.now();
     await ctx.db.patch(
@@ -334,9 +337,9 @@ export const resign = mutation({
 
 /** Before both sides have moved, either player can call the game off without a result. */
 export const abort = mutation({
-  args: { code: v.string(), token: v.string() },
-  handler: async (ctx, { code, token }) => {
-    const { room } = await playerRoom(ctx, code, token);
+  args: { code: v.string(), token: v.string(), game: v.optional(v.number()) },
+  handler: async (ctx, { code, token, game }) => {
+    const { room } = await playerRoom(ctx, code, token, game);
     if (room.status !== 'playing' || room.moves.length >= 2) throw new ConvexError('This game can no longer be aborted.');
     await ctx.db.patch(room._id, { status: 'over', result: '*', reason: 'aborted', drawOffer: undefined, lastActivity: Date.now() });
   },
@@ -344,9 +347,9 @@ export const abort = mutation({
 
 /** Offers a draw, or accepts the opponent's standing offer. */
 export const offerDraw = mutation({
-  args: { code: v.string(), token: v.string() },
-  handler: async (ctx, { code, token }) => {
-    const { room, me } = await playerRoom(ctx, code, token);
+  args: { code: v.string(), token: v.string(), game: v.optional(v.number()) },
+  handler: async (ctx, { code, token, game }) => {
+    const { room, me } = await playerRoom(ctx, code, token, game);
     if (room.status !== 'playing') throw new ConvexError('This game is not in progress.');
     const now = Date.now();
     const timeout = flagFallen(room, now);
@@ -361,18 +364,18 @@ export const offerDraw = mutation({
 });
 
 export const declineDraw = mutation({
-  args: { code: v.string(), token: v.string() },
-  handler: async (ctx, { code, token }) => {
-    const { room, me } = await playerRoom(ctx, code, token);
+  args: { code: v.string(), token: v.string(), game: v.optional(v.number()) },
+  handler: async (ctx, { code, token, game }) => {
+    const { room, me } = await playerRoom(ctx, code, token, game);
     if (room.drawOffer === other(me)) await ctx.db.patch(room._id, { drawOffer: undefined, lastActivity: Date.now() });
   },
 });
 
 /** Asks for another game, or starts it when the opponent already asked. Colors swap; the time mode stays. */
 export const rematch = mutation({
-  args: { code: v.string(), token: v.string() },
-  handler: async (ctx, { code, token }) => {
-    const { room, me } = await playerRoom(ctx, code, token);
+  args: { code: v.string(), token: v.string(), game: v.optional(v.number()) },
+  handler: async (ctx, { code, token, game }) => {
+    const { room, me } = await playerRoom(ctx, code, token, game);
     if (room.status !== 'over') throw new ConvexError('Finish this game first.');
     const now = Date.now();
     if (room.rematch !== other(me)) {

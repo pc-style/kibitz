@@ -103,15 +103,15 @@ export function SettingsButton() {
         </section>
 
         <section>
-          <h2 class="settings-title">Engine depth</h2>
-          <div class="segmented segmented-wide" role="radiogroup" aria-label="Engine depth">
+          <h2 class="settings-title">Review depth</h2>
+          <div class="segmented segmented-wide" role="radiogroup" aria-label="Review depth">
             {DEPTHS.map((d) => (
               <button key={d.depth} type="button" role="radio" aria-checked={s.depth === d.depth} onClick={() => updateSettings({ depth: d.depth })}>
                 {d.label} <span class="muted">{d.depth}</span>
               </button>
             ))}
           </div>
-          <p class="settings-note">Deeper is stronger but slower. Each depth's review is saved separately.</p>
+          <p class="settings-note">How hard Stockfish looks at each move of a game review. Deeper is stronger but slower; each depth's review is saved separately.</p>
         </section>
       </div>
     </div>

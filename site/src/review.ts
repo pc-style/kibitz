@@ -68,19 +68,41 @@ export function scorePosition(game: Game, index: number, ev: PositionEval | unde
   return { whiteWin: winChance(cp), whiteCp: clamp(cp, -1000, 1000), label: `${cp > 0 ? '+' : ''}${(cp / 100).toFixed(1)}` };
 }
 
-/** The piece a move leaves en prise when that is worth at least a minor piece net of what it took. */
-function sacrificedPiece(ply: Ply): PieceSymbol | undefined {
+/**
+ * The piece a move leaves en prise when that is worth at least a minor piece net of what it took.
+ * A piece that was already en prise before the opponent's last move doesn't count: it's poisoned or
+ * long-standing, not given up by this move. (One the opponent just attacked does: ignoring a threat.)
+ */
+function sacrificedPiece(ply: Ply, earlier?: string): PieceSymbol | undefined {
+  const stale = new Set<string>();
+  if (earlier) {
+    const before = new Chess(earlier);
+    if (before.turn() !== ply.color)
+      for (const m of before.moves({ verbose: true })) {
+        const defended = before.attackers(m.to, ply.color).length > 0;
+        if (m.captured && VALUE[m.captured] - (defended ? VALUE[m.piece] : 0) > 0) stale.add(m.to + m.captured);
+      }
+  }
   const chess = new Chess(ply.fenAfter);
   let atStake = 0;
   let piece: PieceSymbol | undefined;
   for (const reply of chess.moves({ verbose: true })) {
     if (!reply.captured || reply.captured === 'p') continue;
+    if (reply.to !== ply.to && stale.has(reply.to + reply.captured)) continue;
     const defended = chess.attackers(reply.to, ply.color).length > 0;
     const net = VALUE[reply.captured] - (defended ? VALUE[reply.piece] : 0);
     if (net > atStake) [atStake, piece] = [net, reply.captured];
   }
   return atStake - (ply.captured ? VALUE[ply.captured] : 0) >= SACRIFICE ? piece : undefined;
 }
+
+/** The same position with the other side to move (no en passant): what was already hanging before a game's first move. */
+const passTurn = (fen: string) => {
+  const parts = fen.split(' ');
+  parts[1] = parts[1] === 'w' ? 'b' : 'w';
+  parts[3] = '-';
+  return parts.join(' ');
+};
 
 const isRecapture = (ply: Ply, prev: Ply | undefined) => !!prev?.captured && !!ply.captured && prev.to === ply.to;
 
@@ -105,7 +127,10 @@ export function reviewGame(
 
     const mine = (s: Score) => (ply.color === 'w' ? s.whiteWin : 100 - s.whiteWin);
     const winBefore = mine(before);
-    const winAfter = mine(after);
+    // When the move is one of the engine's own lines, its score from that same search is the steadier
+    // measure: two separate shallow searches (before and after the move) can disagree wildly.
+    const listed = lines.find((l, k) => k > 0 && l.pv[0] === ply.uci);
+    const winAfter = listed ? Math.max(mine(after), lineWin(listed)) : mine(after);
     const loss = Math.max(0, winBefore - winAfter);
     const isBest = ply.uci === lines[0].pv[0];
     const gap = lines[1] ? lineWin(lines[0]) - lineWin(lines[1]) : 0;
@@ -114,7 +139,7 @@ export function reviewGame(
     let grade: Grade;
     const forcesMate = winAfter === 100; // only a mate score reaches 100
     const sacrificed =
-      (isBest || loss <= EXCELLENT) && (winBefore < DECIDED || forcesMate) && winAfter >= STILL_FINE ? sacrificedPiece(ply) : undefined;
+      (isBest || loss <= EXCELLENT) && (winBefore < DECIDED || forcesMate) && winAfter >= STILL_FINE ? sacrificedPiece(ply, game.fens[i - 1] ?? passTurn(ply.fenBefore)) : undefined;
     if (sacrificed) grade = 'brilliant';
     else if (isBest && gap >= GREAT_GAP && winBefore < DECIDED && !isRecapture(ply, game.plies[i - 1])) grade = 'great';
     else if (isBest) grade = 'best';

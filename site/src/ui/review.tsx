@@ -2,7 +2,7 @@ import type { DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
 import { Chess } from 'chess.js';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { analysePositions, type PositionEval } from '../engine';
+import { analysePositions, LiveEngine, type PositionEval } from '../engine';
 import { explainMove, moveName, summarizeGame } from '../explain';
 import { epd, parseGame, type Game } from '../game';
 import { boardHash } from '../sources';
@@ -12,6 +12,7 @@ import { EvalGraph } from './graph';
 import { GRADE_INFO, GradeIcon, NOTABLE, badgeSvg } from './grades';
 import { useSettings } from '../settings';
 import { Piece } from './piece';
+import { isPromotion, PromotionPicker } from './promotion';
 import { reducedMotion } from './theme';
 
 /** Grades where Retry is offered: the moves worth finding again. */
@@ -19,9 +20,15 @@ const RETRY: ReadonlySet<Grade> = new Set(['inaccuracy', 'mistake', 'miss', 'blu
 const SIDE = { w: 'White', b: 'Black' } as const;
 
 interface Retry {
-  status: 'trying' | 'correct' | 'wrong' | 'revealed';
+  status: 'trying' | 'checking' | 'correct' | 'wrong' | 'revealed';
   uci?: string;
 }
+
+/** Grades double-checked with a deeper search before the review is shown as done. */
+const RECHECK: ReadonlySet<Grade> = new Set(['mistake', 'miss', 'blunder']);
+
+/** A Retry answer within this many win-chance points of the best move counts, like a near-equal second line. */
+const RETRY_SLACK = 5;
 
 /** Plays a UCI move on a position, for showing Best and Retry attempts on the board. */
 function play(fen: string, uci: string) {
@@ -83,6 +90,8 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const [failure, setFailure] = useState<string>();
   // Try again after a failure keeps the positions already analysed.
   const [attempt, setAttempt] = useState(0);
+  // Positions being searched again, deeper, to confirm mistakes and blunders.
+  const [rechecking, setRechecking] = useState(0);
   const partial = useRef<{ key: string; evals: (PositionEval | undefined)[] }>({ key: '', evals: [] });
   const [index, setIndex] = useState(0);
   const [orientation, setOrientation] = useState(initialOrientation);
@@ -111,21 +120,33 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     partial.current = { key, evals: result };
     setEvals([...result]);
     setFailure(undefined);
+    setRechecking(0);
     const ctrl = new AbortController();
     // Each position goes with the moves that reached it, so the engine sees repetitions as draws.
-    const positions = game.fens.map((fen, i) =>
-      (i === total - 1 && game.ending) || result[i] ? null : { fen, from: game.fens[0], moves: game.plies.slice(0, i).map((p) => p.uci) },
-    );
+    const position = (i: number) =>
+      i === total - 1 && game.ending ? null : { fen: game.fens[i], from: game.fens[0], moves: game.plies.slice(0, i).map((p) => p.uci) };
+    const store = (i: number, ev: PositionEval) => {
+      result[i] = ev;
+      setEvals([...result]);
+    };
     analysePositions(
-      positions,
+      game.fens.map((_, i) => (result[i] ? null : position(i))),
       depth,
-      (i, ev) => {
-        result[i] = ev;
-        setEvals([...result]);
-      },
+      store,
       ctrl.signal,
     )
-      .then(() => {
+      .then(async () => {
+        if (ctrl.signal.aborted) return;
+        // A shallow search can miss a tactic and call a strong move a blunder (Quick once did that to Morphy's
+        // 15.Bxd7+). Before showing the result, search both sides of every flagged move deeper.
+        if (depth < 20) {
+          const flagged = new Set(reviewGame(game, result, null).moves.flatMap((m, i) => (m && RECHECK.has(m.grade) ? [i, i + 1] : [])));
+          if (flagged.size) {
+            setRechecking(flagged.size);
+            await analysePositions(game.fens.map((_, i) => (flagged.has(i) ? position(i) : null)), Math.min(22, depth + 6), store, ctrl.signal);
+            setRechecking(0);
+          }
+        }
         if (ctrl.signal.aborted) return;
         try {
           localStorage.setItem(key, JSON.stringify(result));
@@ -133,14 +154,17 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
           // Storage full: the review still works, it just won't be remembered.
         }
       })
-      .catch((err) => setFailure(err instanceof Error ? err.message : String(err)));
+      .catch((err) => {
+        setRechecking(0);
+        setFailure(err instanceof Error ? err.message : String(err));
+      });
     return () => ctrl.abort();
   }, [game, depth, attempt]);
 
 
   const { scores, moves } = useMemo(() => reviewGame(game, evals, openings?.book ?? null), [game, evals, openings]);
   const analysed = scores.filter(Boolean).length;
-  const complete = analysed === total;
+  const complete = analysed === total && !rechecking;
   const accuracy = useMemo(
     () => (complete ? gameAccuracy(scores as Score[], game.plies[0].color === 'w') : undefined),
     [complete, scores],
@@ -178,7 +202,9 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   nav.current = { index, nextKey, prevKey };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.metaKey || e.ctrlKey || e.altKey) return;
+      // Not while typing, and not from inside Settings, whose own buttons take the keys.
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest('input, textarea, select, #settings') || e.metaKey || e.ctrlKey || e.altKey) return;
       const { index: i, nextKey: n, prevKey: p } = nav.current;
       const map: Record<string, number | undefined> = {
         ArrowLeft: i - 1,
@@ -201,9 +227,17 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     return () => window.removeEventListener('keydown', onKey);
   }, [total]);
 
+  // Retry answers the engine didn't list are checked with a short search of their own.
+  const [retryPromotion, setRetryPromotion] = useState<{ from: Key; to: Key } | null>(null);
+  const checker = useRef<LiveEngine | null>(null);
+  const checking = useRef(0);
+  useEffect(() => () => checker.current?.terminate(), []);
+
   // Best and Retry belong to the move they were opened on.
   useEffect(() => {
+    checking.current++;
     setRetry(null);
+    setRetryPromotion(null);
     setShowBest(false);
   }, [index]);
 
@@ -213,14 +247,32 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   const bestUci = move?.best ? lines[0]?.pv[0] : undefined;
   const canRetry = !!ply && !!move && RETRY.has(move.grade) && !!lines[0];
 
-  const onRetryMove = (orig: Key, dest: Key) => {
-    if (!ply) return;
-    const piece = new Chess(ply.fenBefore).get(orig as never);
-    const promotion = piece?.type === 'p' && (dest[1] === '8' || dest[1] === '1') ? 'q' : '';
-    const uci = `${orig}${dest}${promotion}`;
+  const onRetryMove = (orig: Key, dest: Key, promotion?: string) => {
+    if (!ply || !lines[0]) return;
+    if (!promotion && isPromotion(ply.fenBefore, orig, dest)) return setRetryPromotion({ from: orig, to: dest });
+    setRetryPromotion(null);
+    const uci = `${orig}${dest}${promotion ?? ''}`;
     // The engine's top move counts, and so does its second choice when it's nearly as good.
-    const ok = uci === lines[0]?.pv[0] || (!!lines[1] && uci === lines[1].pv[0] && lineWin(lines[0]) - lineWin(lines[1]) <= 5);
-    setRetry({ status: ok ? 'correct' : 'wrong', uci });
+    const listed = uci === lines[0].pv[0] || (!!lines[1] && uci === lines[1].pv[0] && lineWin(lines[0]) - lineWin(lines[1]) <= RETRY_SLACK);
+    if (listed || uci === ply.uci) return setRetry({ status: listed ? 'correct' : 'wrong', uci });
+    // Anything else gets its own search: a different move can be just as good.
+    const run = ++checking.current;
+    setRetry({ status: 'checking', uci });
+    const after = new Chess(ply.fenBefore);
+    after.move({ from: orig, to: dest, promotion });
+    // Only if this check is still the one on screen (not cancelled, retried, or left for another move).
+    const judge = (win: number) =>
+      run === checking.current &&
+      setRetry((r) => (r?.status === 'checking' && r.uci === uci ? { status: lineWin(lines[0]) - win <= RETRY_SLACK ? 'correct' : 'wrong', uci } : r));
+    if (after.isCheckmate()) return judge(100);
+    if (after.isDraw()) return judge(50);
+    (checker.current ??= new LiveEngine())
+      .analyse(after.fen(), Math.min(depth, 16))
+      .then((r) => r?.lines[0] && judge(100 - lineWin(r.lines[0])))
+      .catch(() => {
+        checker.current = null;
+        judge(0);
+      });
   };
 
   // What the board shows: the game position, or a Best / Retry variation on top of it.
@@ -237,7 +289,8 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
       }
       const uci = retry.status === 'revealed' ? lines[0].pv[0] : retry.uci!;
       const p = play(ply.fenBefore, uci);
-      return { fen: p.fen, lastMove: [p.from, p.to], shapes: [badge(retry.status === 'wrong' ? 'miss' : 'best', p.to)] };
+      const shapes = retry.status === 'checking' ? [] : [badge(retry.status === 'wrong' ? 'miss' : 'best', p.to)];
+      return { fen: p.fen, lastMove: [p.from, p.to], shapes };
     }
     if (ply && showBest && bestUci) {
       const p = play(ply.fenBefore, bestUci);
@@ -301,10 +354,20 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
               orientation={orientation === 'w' ? 'white' : 'black'}
               lastMove={view.lastMove}
               shapes={view.shapes}
-              movable={view.movable}
+              movable={retryPromotion ? undefined : view.movable}
+              typing={!!view.movable}
               coordinates={settings.coordinates}
               animate={settings.motion}
             />
+            {retryPromotion && ply ? (
+              <PromotionPicker
+                square={retryPromotion.to}
+                color={ply.color === 'w' ? 'white' : 'black'}
+                orientation={orientation === 'w' ? 'white' : 'black'}
+                onPick={(piece) => onRetryMove(retryPromotion.from, retryPromotion.to, piece)}
+                onCancel={() => setRetryPromotion(null)}
+              />
+            ) : null}
           </div>
         </div>
         <PlayerStrip {...player(bottom)} color={bottom} />
@@ -339,6 +402,8 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
             analysed={analysed}
             total={total}
             failure={failure}
+            complete={complete}
+            rechecking={rechecking}
             onRetry={() => setAttempt((n) => n + 1)}
             onJump={jumpTo}
             onStart={() => go(keyMoments[0] ?? 1)}
@@ -492,11 +557,13 @@ function Report(props: {
   analysed: number;
   total: number;
   failure?: string;
+  complete: boolean;
+  rechecking: number;
   onRetry: () => void;
   onJump: (grade: Grade, color: 'w' | 'b') => void;
   onStart: () => void;
 }) {
-  const { title, game, moves, accuracy, stats, summary, names, analysed, total, failure, onRetry, onJump, onStart } = props;
+  const { title, game, moves, accuracy, stats, summary, names, analysed, total, failure, complete, rechecking, onRetry, onJump, onStart } = props;
   const counts = (grade: Grade, color: 'w' | 'b') => game.plies.filter((p, i) => p.color === color && moves[i]?.grade === grade).length;
   const count = (grade: Grade, color: 'w' | 'b') => {
     const n = counts(grade, color);
@@ -533,9 +600,11 @@ function Report(props: {
             Try again
           </button>
         </div>
+      ) : complete ? (
+        <p class="report-coach">Review complete. The game is too short for an accuracy score.</p>
       ) : (
         <div class="report-progress">
-          <span class="report-label">Reviewing on your device</span>
+          <span class="report-label">{rechecking ? `Double-checking ${rechecking} positions deeper` : 'Reviewing on your device'}</span>
           <strong>
             {analysed}
             <span class="report-total"> / {total} positions</span>
@@ -685,6 +754,10 @@ function Coach(props: {
           </button>
         </>
       );
+    } else if (retry.status === 'checking') {
+      grade = undefined;
+      lead = `Checking ${tried}…`;
+      detail = 'Stockfish is looking at your move.';
     } else if (retry.status === 'correct') {
       grade = 'best';
       lead = `Correct! ${tried} ${tried === move.best ? 'is the best move' : 'works too'}.`;

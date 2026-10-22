@@ -91,7 +91,7 @@
 
 /* Rows keep their height while lines arrive, so the card doesn't jump. */
 .analysis-lines li {
-  min-height: 34px;
+  min-height: 44px;
 }
 
 .analysis-line {
@@ -99,7 +99,7 @@
   align-items: center;
   gap: calc(var(--space) * 2.5);
   width: 100%;
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 calc(var(--space) * 2) 0 calc(var(--space) * 1);
   border: 0;
   border-radius: var(--r-sm);
@@ -120,12 +120,16 @@
   font: 600 var(--t-xs) / 1 var(--font-mono);
 }
 
+/* Two rows, so the line reads past its first moves (phones included); clamped so streaming updates don't jump. */
 .analysis-line-moves {
+  display: -webkit-box;
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .analysis-line-moves strong {

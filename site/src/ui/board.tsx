@@ -3,7 +3,7 @@ import { Chess } from 'chess.js';
 import type { Api } from '@lichess-org/chessground/api';
 import type { DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { reducedMotion } from './theme';
 
 export interface Movable {
@@ -31,7 +31,8 @@ export function Board({ fen, orientation, lastMove, shapes, movable, coordinates
   const onMove = useRef(movable?.onMove);
   onMove.current = movable?.onMove;
 
-  useEffect(() => {
+  // Created before paint and before the sync below, which runs in the same pass on the first render.
+  useLayoutEffect(() => {
     // Not viewOnly: chessground binds pointer events only at creation, and Retry needs them later.
     // With no movable color nothing can be moved, so it still behaves as a display.
     const cg = Chessground(el.current!, {
@@ -58,7 +59,8 @@ export function Board({ fen, orientation, lastMove, shapes, movable, coordinates
     api.current?.set({ animation: { enabled: animate && !reducedMotion() } });
   }, [animate]);
 
-  useEffect(() => {
+  // Before paint, so the board takes moves from the same frame that says "Your move" (no click lost in between).
+  useLayoutEffect(() => {
     api.current?.set({
       fen,
       orientation,

@@ -64,9 +64,12 @@ export function App() {
         setRoute(readHash());
         window.scrollTo(0, 0);
       };
-      if (!document.startViewTransition || reducedMotion()) return swap();
-      // Crossfade between the start page and a review; Preact renders on the next microtask.
-      document.startViewTransition(() => new Promise<void>((resolve) => (swap(), setTimeout(resolve))));
+      // Background tabs can't animate (the transition is aborted), so they just swap.
+      if (!document.startViewTransition || reducedMotion() || document.hidden) return swap();
+      // Crossfade between pages; Preact renders on the next microtask.
+      const transition = document.startViewTransition(() => new Promise<void>((resolve) => (swap(), setTimeout(resolve))));
+      // A transition cut short (another navigation, the tab hidden mid-way) still swaps; it just doesn't animate.
+      transition.ready.catch(() => {});
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
@@ -269,7 +272,8 @@ const SITES: { id: Site; label: string }[] = [
 function Analysis() {
   const [site, setSite] = useState<Site>(() => (recall('kibitz:site') === 'lichess' ? 'lichess' : 'chesscom'));
   const [username, setUsername] = useState(() => recall('kibitz:user') ?? '');
-  const [games, setGames] = useState<GameSummary[] | null>(null);
+  // The list remembers whose games it is, so editing the name afterwards doesn't relabel them.
+  const [games, setGames] = useState<{ list: GameSummary[]; who: string; site: Site } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [pgn, setPgn] = useState('');
@@ -283,7 +287,7 @@ function Analysis() {
     setLoading(true);
     setError(undefined);
     try {
-      setGames(await fetchGames(site, name));
+      setGames({ list: await fetchGames(site, name), who: name, site });
     } catch (err) {
       setGames(null);
       setError(err instanceof Error ? err.message : String(err));
@@ -292,7 +296,7 @@ function Analysis() {
     }
   };
 
-  const me = username.trim().toLowerCase();
+  const me = games?.who.toLowerCase() ?? '';
   const date = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
   // The hero shows a real moment from a real review.
   const opera = useOpera();
@@ -365,10 +369,15 @@ function Analysis() {
             {error}
           </p>
         ) : null}
-        {games && !games.length ? <p class="muted">No recent finished standard games.</p> : null}
-        {games?.length ? (
+        {games && !games.list.length ? <p class="muted">No recent finished standard games for {games.who}.</p> : null}
+        {games?.list.length ? (
+          <p class="muted game-list-who">
+            {games.who}'s last {games.list.length} games on {games.site === 'lichess' ? 'lichess' : 'chess.com'}
+          </p>
+        ) : null}
+        {games?.list.length ? (
           <ul class="game-list">
-            {games.map((g, i) => {
+            {games.list.map((g, i) => {
               const asBlack = g.black.toLowerCase() === me;
               const asWhite = g.white.toLowerCase() === me;
               const outcome =

@@ -36,6 +36,8 @@ export default defineSchema({
     turnStartedAt: v.number(),
     drawOffer: v.optional(color),
     rematch: v.optional(color),
+    /** Who last set the time control, so the other player is told before the first move. */
+    clockBy: v.optional(color),
     /** Any player action. Rooms close 15 minutes after the last one. */
     lastActivity: v.number(),
   })

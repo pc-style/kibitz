@@ -300,10 +300,17 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
       shownAt = performance.now();
       if (latest && !cancelled) setLive({ fen, ev: latest, done });
     };
-    e.analyse(fen, DEPTH, (ev) => {
-      latest = ev;
-      if (!timer) timer = window.setTimeout(() => show(false), Math.max(0, shownAt + 1000 / RENDERS_PER_SECOND - performance.now()));
-    })
+    // With the moves that led here, so the engine sees repetitions.
+    const history = { from: line.start, moves: line.moves.slice(0, line.index).map((m) => m.uci) };
+    e.analyse(
+      fen,
+      DEPTH,
+      (ev) => {
+        latest = ev;
+        if (!timer) timer = window.setTimeout(() => show(false), Math.max(0, shownAt + 1000 / RENDERS_PER_SECOND - performance.now()));
+      },
+      history,
+    )
       .then((result) => {
         if (!result) return;
         clearTimeout(timer);
@@ -457,7 +464,7 @@ export function AnalysisBoard({ fen: initial }: { fen?: string }) {
                 const s = whiteScore(l, fen);
                 return (
                   <li key={i}>
-                    <button type="button" class="analysis-line" onClick={() => change((a) => playMove(a, uciMove(l.pv[0])))} title={`Play ${sans[0]}`}>
+                    <button type="button" class="analysis-line" onClick={() => change((a) => playMove(a, uciMove(l.pv[0])))} title={`Play ${sans[0]} (line: ${sans.join(' ')})`}>
                       <span class={`analysis-line-score analysis-eval-${s.whiteWin < 50 ? 'b' : 'w'}`}>{s.label}</span>
                       <span class="analysis-line-moves san">
                         <strong>{sans[0]}</strong> {sans.slice(1).join(' ')}
