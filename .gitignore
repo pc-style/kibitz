@@ -4,3 +4,4 @@ site/public/engine
 .vercel
 *.zip
 !site/public/kibitz-extension.zip
+__pycache__
