@@ -1,12 +1,13 @@
 # Kibitz
 
-Free chess in the browser: lessons from zero, bots, games with friends over a link, and game review. Every reviewed move gets a chess.com-style grade (brilliant to blunder), both players get an accuracy score, and a coach explains what went wrong, with Best and Retry to learn from it. Stockfish 19 runs on your own device, so there's no paywall and no daily limit.
+Free chess in the browser: lessons from zero, puzzles, bots, games with friends over a link, and game review. Every reviewed move gets a chess.com-style grade (brilliant to blunder), both players get an accuracy score, and a coach explains what went wrong, with Best and Retry to learn from it. Stockfish 19 runs on your own device, so there's no paywall and no daily limit.
 
 **Live:** https://kibitz.pcstyle.dev
 
 ## Use it
 
 - Load recent games by chess.com or lichess username, or paste a PGN.
+- Puzzles: rated puzzles that follow your level (your rating is kept in your browser), every theme from forks to smothered mates, a puzzle of the day, Puzzle Rush (3 minutes, 5 minutes, or until three misses), and Your mistakes: the mistakes and blunders from games of yours reviewed here, to find the better move.
 - Play a bot from Play; a game left half-way is kept in your browser and comes back when you return.
 - To play a friend, open Play → A friend, make a link and send it. No accounts; rooms close after 15 minutes without a move.
 - Every board you play on also takes typed moves (e4, Nf3, e2e4): Tab to the field under the board.
@@ -22,7 +23,10 @@ pnpm dev     # copies the engine into public/engine, then starts Vite
 pnpm build   # copies the engine, type-checks, builds to dist/
 npx convex dev   # games with friends: runs the backend in site/convex against your own Convex dev deployment
 pnpm sounds  # resynthesizes every sound into src/sounds (needs uv and ffmpeg)
+pnpm puzzles --lichess lichess_db_puzzle.csv.zst --originals scripts/puzzles/originals.jsonl   # rebuilds src/puzzles/data
 ```
+
+The puzzle files come from [lichess's puzzle database](https://database.lichess.org/#puzzles) (download `lichess_db_puzzle.csv.zst`) and Kibitz's own puzzles in `scripts/puzzles/originals.jsonl`. Those are made by the scripts beside it: `mine-bots.py` finds tactics in games between the Kibitz bots (needs Stockfish), `endgames.py` builds endgames proven with Syzygy tablebases, and `tag-rate.py` gives them themes and a rating from a model trained on lichess's rated puzzles.
 
 Production builds on Vercel run `npx convex deploy` first when `CONVEX_DEPLOY_KEY` is set (see `site/vercel.json`), so the backend and the site ship together.
 
@@ -35,6 +39,7 @@ GPL-3.0-or-later (see `LICENSE`), since Stockfish and chessground are GPL.
 - Engine: [Stockfish](https://stockfishchess.org) via [stockfish.js](https://github.com/nmrugg/stockfish.js) (GPL-3.0)
 - Board: [chessground](https://github.com/lichess-org/chessground) (GPL-3.0), moves: [chess.js](https://github.com/jhlywa/chess.js) (BSD-2)
 - Opening names: [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) (CC0)
+- Puzzles: [lichess puzzle database](https://database.lichess.org/#puzzles) (CC0), plus Kibitz's own, made by the scripts in [`site/scripts/puzzles`](site/scripts/puzzles); endgames checked with [Syzygy tablebases](https://syzygy-tables.info)
 - Accuracy formula: lichess; grade categories: chess.com
 - Piece sets: see [`site/public/pieces/LICENSES.md`](site/public/pieces/LICENSES.md)
 - Sounds: synthesized from scratch by [`site/scripts/make-sounds.py`](site/scripts/make-sounds.py), no recordings

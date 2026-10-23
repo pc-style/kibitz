@@ -770,7 +770,7 @@ textarea {
   grid-template-areas:
     'head head'
     'learn analysis'
-    'play play'
+    'play puzzles'
     'foot foot';
   align-items: stretch;
 }
@@ -813,6 +813,11 @@ textarea {
 
 .door-play {
   grid-area: play;
+  grid-template-columns: 80px minmax(0, 1fr);
+}
+
+.door-puzzles {
+  grid-area: puzzles;
   grid-template-columns: 80px minmax(0, 1fr);
 }
 
@@ -1152,15 +1157,14 @@ html:not(.theme-reveal) .topbar {
   min-width: 116px;
 }
 
-/* Sections. Puzzles is listed but not built yet. */
+/* Sections. */
 .topnav {
   display: flex;
   align-items: center;
   gap: calc(var(--space) * 1);
 }
 
-.topnav a,
-.topnav-soon {
+.topnav a {
   padding: calc(var(--space) * 1.5) calc(var(--space) * 3);
   border-radius: var(--r-sm);
   color: var(--muted);
@@ -1177,18 +1181,6 @@ html:not(.theme-reveal) .topbar {
 .topnav a[aria-current='page'] {
   color: var(--fg);
   background: var(--surface);
-}
-
-.topnav-soon {
-  color: color-mix(in oklab, var(--muted) 60%, transparent);
-  cursor: default;
-}
-
-.topnav-soon small {
-  margin-left: 2px;
-  font: 600 0.62rem / 1 var(--font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .stage {
@@ -2118,7 +2110,7 @@ html:not(.theme-reveal) .topbar {
   }
 
   .home-doors {
-    grid-template-areas: 'head' 'learn' 'analysis' 'play' 'foot';
+    grid-template-areas: 'head' 'learn' 'analysis' 'play' 'puzzles' 'foot';
   }
 
   .home-analysis {
@@ -2236,7 +2228,7 @@ html[data-motion='off'] *::after {
   animation-iteration-count: 1 !important;
 }
 
-/* Phones: the bar keeps the logo, the two live sections and settings; Soon items and the wordmark go.
+/* Phones: the bar keeps the logo, the sections and settings; the wordmark goes.
    The key-move button gets its own row so its label never clips. */
 @media (max-width: 560px) {
   .controls {
@@ -2252,9 +2244,18 @@ html[data-motion='off'] *::after {
     margin-left: 0;
   }
 
-  .topnav-soon,
   .topbar .wordmark {
     display: none;
+  }
+
+  /* Four sections, the logo and settings across a phone: a little tighter. */
+  .topnav {
+    gap: 0;
+  }
+
+  .topnav a {
+    padding-inline: calc(var(--space) * 2);
+    font-size: var(--t-sm);
   }
 
   .topbar-inner {
@@ -2263,6 +2264,17 @@ html[data-motion='off'] *::after {
 
   .topbar .logo {
     min-width: 0;
+  }
+}
+
+/* The narrowest phones (320px): tighter still, so settings stays on screen. */
+@media (max-width: 360px) {
+  .topbar-inner {
+    gap: calc(var(--space) * 1);
+  }
+
+  .topnav a {
+    padding-inline: calc(var(--space) * 1.5);
   }
 }
 

@@ -12,7 +12,8 @@
     "openings": "node scripts/build-openings.mjs",
     "check:course": "node scripts/check-course.mjs",
     "check:play": "node scripts/check-play.mjs",
-    "sounds": "uv run scripts/make-sounds.py"
+    "sounds": "uv run scripts/make-sounds.py",
+    "puzzles": "uv run scripts/build-puzzles.py"
   },
   "dependencies": {
     "@fontsource/martian-mono": "^5.3.0",

@@ -17,6 +17,8 @@ import { Review } from './ui/review';
 import { reducedMotion } from './ui/theme';
 import { PlayPage } from './play/page';
 import { loadSavedGame } from './play/bots';
+import { PuzzlesPage, puzzleTitle, readPuzzleRoute, type PuzzleRoute } from './puzzles/page';
+import { useProgress } from './puzzles/progress';
 
 const OPERA_GAME = `[Event "Paris"]
 [Site "Paris FRA"]
@@ -36,14 +38,19 @@ type Route =
   | { page: 'play'; friend: boolean }
   | { page: 'room'; code: string }
   | { page: 'lesson'; id: string }
+  | { page: 'puzzles'; route: PuzzleRoute }
   | { page: 'review'; pgn: string; orientation: 'w' | 'b' };
 
-/** Pages live at #/learn, #/learn/<lesson>, #/play, #/play/<room>, #/analysis and #/board?fen=; reviews keep their #pgn= links. */
+/**
+ * Pages live at #/learn, #/learn/<lesson>, #/puzzles/..., #/puzzle/<id>, #/play, #/play/<room>, #/analysis and
+ * #/board?fen=; reviews keep their #pgn= links.
+ */
 function readHash(): Route {
   const hash = location.hash.slice(1);
   if (hash.startsWith('/')) {
     const [path, query] = hash.split('?');
-    const [section, id] = path.split('/').filter(Boolean);
+    const [section, id, sub] = path.split('/').filter(Boolean);
+    if (section === 'puzzles' || section === 'puzzle') return { page: 'puzzles', route: readPuzzleRoute(section, id, sub) };
     if (section === 'learn') return id ? { page: 'lesson', id } : { page: 'learn' };
     if (section === 'play') return id ? { page: 'room', code: id } : { page: 'play', friend: new URLSearchParams(query).get('with') === 'friend' };
     if (section === 'analysis') return { page: 'analysis' };
@@ -92,6 +99,8 @@ function titleOf(route: Route): string {
       return 'Learn chess · Kibitz';
     case 'lesson':
       return `${route.id === FINAL.id ? FINAL.title : (LESSONS.find((l) => l.id === route.id)?.title ?? 'Lesson')} · Learn · Kibitz`;
+    case 'puzzles':
+      return `${puzzleTitle(route.route)} · Kibitz`;
     case 'play':
       return route.friend ? 'Play a friend · Kibitz' : 'Play · Kibitz';
     case 'room':
@@ -109,6 +118,7 @@ function titleOf(route: Route): string {
 
 function sectionOf(route: Route): Section | undefined {
   if (route.page === 'learn' || route.page === 'lesson') return 'learn';
+  if (route.page === 'puzzles') return 'puzzles';
   if (route.page === 'play' || route.page === 'room') return 'play';
   if (route.page === 'analysis' || route.page === 'board' || route.page === 'review') return 'analysis';
 }
@@ -129,6 +139,8 @@ function Page({ route }: { route: Route }) {
       return <RoomRoute key={route.code} code={route.code} />;
     case 'lesson':
       return <LessonPage key={route.id} id={route.id} />;
+    case 'puzzles':
+      return <PuzzlesPage key={JSON.stringify(route.route)} route={route.route} />;
     default:
       return <Home />;
   }
@@ -155,7 +167,7 @@ function RoomRoute({ code }: { code: string }) {
   return page ? <page.Room code={code} /> : <main class="play-page" aria-busy="true" />;
 }
 
-/** The way in: Learn, Analysis, and a game against a bot. */
+/** The way in: Learn, Analysis, a game against a bot, and puzzles. */
 function Home() {
   const stars = useStars();
   // Counted like the course map: every lesson plus the final game.
@@ -164,6 +176,7 @@ function Home() {
   const knightDots = useMemo(() => ['c2', 'e2', 'b3', 'f3', 'b5', 'f5', 'c6', 'e6'].map(dotShape), []);
   const opera = useOpera();
   const saved = useMemo(loadSavedGame, []);
+  const puzzles = useProgress();
 
   return (
     <main class="home home-doors">
@@ -172,8 +185,8 @@ function Home() {
           <span>Learn. Play.</span> <span>Review every game.</span>
         </h1>
         <p class="home-lede">
-          Learn how the pieces move, challenge a bot, or get every move of your last game graded. Free, no account, and it all runs
-          in your browser.
+          Learn how the pieces move, sharpen your tactics, challenge a bot, or get every move of your last game graded. Free, no
+          account, and it all runs in your browser.
         </p>
       </header>
 
@@ -218,6 +231,15 @@ function Home() {
           <h2>Play</h2>
           <p>Five opponents, from a forgiving first game to a Stockfish challenge. No clock, with hints and takebacks whenever you need them.</p>
           <span class="door-cta">{saved ? `Continue your game vs ${saved.bot.name}` : 'Choose an opponent'} →</span>
+        </div>
+      </a>
+
+      <a class="door door-puzzles" href={puzzles.rating == null ? '#/puzzles' : '#/puzzles/rated'}>
+        <Piece role="knight" color="white" class="door-opponent" />
+        <div class="door-body">
+          <h2>Puzzles</h2>
+          <p>Tactics from real games, picked for your level. Plus a puzzle of the day, Puzzle Rush, and the mistakes from your own games.</p>
+          <span class="door-cta">{puzzles.rating == null ? 'Solve a puzzle' : `Next puzzle · rating ${Math.round(puzzles.rating)}`} →</span>
         </div>
       </a>
 

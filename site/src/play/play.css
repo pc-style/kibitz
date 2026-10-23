@@ -108,7 +108,3 @@
   .play-status { padding: 16px; }
   .play-moves { max-height: 180px; }
 }
-
-@media (max-width: 380px) {
-  .topnav a { padding-inline: 8px; }
-}

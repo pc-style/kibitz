@@ -1,7 +1,7 @@
 # Kibitz design
 
 ## Discovery
-- **Artifact:** a free chess site in sections: Learn, Play (bots and friends by link) and Analysis, with Puzzles listed as Soon in the top bar until it exists. Not a marketing site.
+- **Artifact:** a free chess site in sections: Learn, Play (bots and friends by link), Analysis and Puzzles. Not a marketing site.
 - **Audience:** club players who want chess.com-style game review without paying for it, and people who have never played and want to learn from zero.
 - **Primary actions:** the home page has a door per section. Learn opens your next lesson; Play picks a bot or makes a link for a friend (and resumes a bot game left half-way); Analysis gets a game in front of the review in one step (username list, pasted PGN, or the chess.com extension) or opens the free board.
 - **Adjectives:** studious, candid, quick, analog. **Essence:** annotated scoresheet, nocturnal.
@@ -12,6 +12,9 @@ Close to chess.com's Game Review on purpose, so players feel at home: green and 
 
 ## Learn
 One path from how the pieces move to forks, pins and basic mates (`src/learn/types.ts` defines the format; `pnpm check:course` proves every position and answer with chess.js and Stockfish). A lesson is a short explainer beside a board that plays the idea on a loop, then hands-on tasks. The knight coach from the review speaks in lessons too, so both sections feel like one tutor. Mistakes and moves over par turn into 1-3 stars, kept in the browser only. The course ends with a game against a deliberately weak bot that opens in the review.
+
+## Puzzles
+A hub (`#/puzzles`) with doors for rated puzzles, the puzzle of the day, Puzzle Rush, your mistakes and Kibitz originals, then every theme as a card with its count. Solving uses the lesson layout and the same coach: the opponent's move plays first, a right move gets the review's green Best star, a wrong one its red cross. The rating is Glicko-2 kept in the browser, started from a level the player picks. Themes and the puzzle's rating stay hidden until it's done, so they don't give the answer away. Data is static: shards of ~50 kB gzipped by a hash of the puzzle id (`src/puzzles/data`), so any puzzle's link needs one download, and a theme loads the shards that hold most of it first.
 
 ## Typography
 - Display and UI: Schibsted Grotesk (400/500/700).
@@ -60,7 +63,7 @@ Grade colors follow chess.com's conventions so they read instantly (teal brillia
 | Theme reveal spreads from the pressed swatch; pages crossfade | cause and continuity |
 
 ## Craft decisions
-- **Layout:** one top bar for the whole app (logo, Learn, Play, Analysis, Puzzles Soon, settings), rendered once above every page and never carrying page content, so it doesn't move between sections. It and the text pages share one frame (`--page-max`, `--page-pad`, `--page-top`). Home is an asymmetric 5/7 split with a sticky headline; Analysis puts your games and the PGN box first, with the sample review beside them. The review screen gives the board the largest share, with a fixed-width side panel (summary, comment, moves, controls). On phones it becomes one column ordered for stepping through: board, verdict, controls, then graph, turning points, summary and moves.
+- **Layout:** one top bar for the whole app (logo, Learn, Play, Analysis, Puzzles, settings), rendered once above every page and never carrying page content, so it doesn't move between sections. It and the text pages share one frame (`--page-max`, `--page-pad`, `--page-top`). Home is an asymmetric 5/7 split with a sticky headline; Analysis puts your games and the PGN box first, with the sample review beside them. The review screen gives the board the largest share, with a fixed-width side panel (summary, comment, moves, controls). On phones it becomes one column ordered for stepping through: board, verdict, controls, then graph, turning points, summary and moves.
 - **Review flow (chess.com's shape):** a report first (coach summary line, accuracy chips, grade counts with icons, Opening/Middlegame/Endgame grades, Start review), then a review mode: coach card with a plain-language reason for each move, Best (plays the engine move on the board) and Retry (find a better move yourself), Next key move (also N/P), and the move list. Turning points under the graph jump to the brilliant moves and biggest swings.
 - **No game rating:** a one-game estimate from the lite engine put a 3450 blitz player at 1950, so the row was dropped rather than show a misleading number.
 - **Home:** the hero visual is a real review moment (Morphy's 16. Qb8+ with its brilliant badge and coach line) that opens that review; the grade legend sits under the headline.

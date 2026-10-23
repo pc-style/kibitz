@@ -1,6 +1,7 @@
 import type { DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
 import { Chess } from 'chess.js';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { analysePositions, LiveEngine, type PositionEval } from '../engine';
 import { explainMove, moveName, summarizeGame } from '../explain';
@@ -15,6 +16,7 @@ import { useCue } from '../sound';
 import { Piece } from './piece';
 import { isPromotion, PromotionPicker } from './promotion';
 import { reducedMotion } from './theme';
+import { MistakesNote, mistakesIn, saveMistakes, yourSide } from '../puzzles/mistakes';
 
 /** Grades where Retry is offered: the moves worth finding again. */
 const RETRY: ReadonlySet<Grade> = new Set(['inaccuracy', 'mistake', 'miss', 'blunder']);
@@ -103,6 +105,8 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
   // Positions being searched again, deeper, to confirm mistakes and blunders.
   const [rechecking, setRechecking] = useState(0);
   const partial = useRef<{ key: string; evals: (PositionEval | undefined)[] }>({ key: '', evals: [] });
+  // Every search finished, the deeper double-check included: only then are the mistakes final.
+  const [settled, setSettled] = useState(false);
   const [index, setIndex] = useState(0);
   const [orientation, setOrientation] = useState(initialOrientation);
   const [openings, setOpenings] = useState<Openings | null>(null);
@@ -131,8 +135,10 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     const usable = (readCache(key, total) ?? []).map((ev) => (ev?.lines.length ? ev : undefined));
     if (game.fens.every((_, i) => usable[i] || (i === total - 1 && game.ending))) {
       setEvals(usable);
+      setSettled(true);
       return;
     }
+    setSettled(false);
     const result: (PositionEval | undefined)[] =
       partial.current.key === key ? [...partial.current.evals] : usable.some(Boolean) ? usable : [];
     partial.current = { key, evals: result };
@@ -171,6 +177,7 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
         } catch {
           // Storage full: the review still works, it just won't be remembered.
         }
+        setSettled(true);
       })
       .catch((err) => {
         setRechecking(0);
@@ -189,6 +196,13 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
     [complete, scores],
   );
   const stats = useMemo(() => (complete ? playerStats(game, scores as Score[], moves) : undefined), [complete, scores, moves]);
+  // Your mistakes become puzzles as soon as the review is final, whichever view is open.
+  const you = useMemo(() => yourSide(game.headers), [game]);
+  // The opening book too: a cached review can settle before it loads, and a book move is no mistake.
+  const final = settled && complete && !!openings;
+  useEffect(() => {
+    if (final && you) saveMistakes(mistakesIn(game, evals, moves, you, location.hash));
+  }, [final]);
 
   const h = game.headers;
   // PGN writes an unknown player as "?".
@@ -432,6 +446,11 @@ function Reviewer({ game, initialOrientation }: { game: Game; initialOrientation
             onRetry={() => setAttempt((n) => n + 1)}
             onJump={jumpTo}
             onStart={() => go(keyMoments[0] ?? 1)}
+            mistakes={
+              final ? (
+                <MistakesNote collect={(side) => mistakesIn(game, evals, moves, side, location.hash)} names={names} side={you} />
+              ) : null
+            }
           />
         ) : (
           <>
@@ -587,6 +606,8 @@ function Report(props: {
   onRetry: () => void;
   onJump: (grade: Grade, color: 'w' | 'b') => void;
   onStart: () => void;
+  /** Your mistakes from the game, saved as puzzles (src/puzzles/mistakes.tsx). */
+  mistakes?: ComponentChildren;
 }) {
   const { title, game, moves, accuracy, stats, summary, names, analysed, total, failure, complete, rechecking, onRetry, onJump, onStart } = props;
   const counts = (grade: Grade, color: 'w' | 'b') => game.plies.filter((p, i) => p.color === color && moves[i]?.grade === grade).length;
@@ -649,6 +670,7 @@ function Report(props: {
       <button type="button" class="button button-primary report-start" onClick={onStart}>
         Start review
       </button>
+      {props.mistakes}
       <table class="report-table">
         <caption class="visually-hidden">Accuracy, moves by grade, and how each phase went. Select a count to jump to the next such move.</caption>
         <thead>
